@@ -1,0 +1,65 @@
+export interface Client {
+  id: string;
+  name: string;
+  created: string;
+  updated: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  client: string;
+  created: string;
+  updated: string;
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  project: string;
+  created: string;
+  updated: string;
+}
+
+export interface AssetRevision {
+  id: string;
+  title: string;
+  description: string;
+  asset: string;
+  version: string;
+  thumbnail?: string;
+  video_file?: string;
+  created: string;
+  updated: string;
+}
+
+export interface DropdownOption {
+  value: string;
+  label: string;
+}
+
+export interface Comment {
+  id: string;
+  name: string;
+  timestamp: string;
+  text: string;
+  revisionId: string;
+  created: string;
+}
+
+export interface Revision {
+  id: string;
+  title: string;
+  description: string;
+  video?: string;
+}
+
+export interface LoaderData {
+  revision: Revision;
+  comments: Comment[];
+  revisionId: string;
+}
+
+export interface AssetCardProps {
+  revision: AssetRevision;
+}

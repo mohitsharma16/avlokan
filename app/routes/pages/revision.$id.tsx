@@ -1,4 +1,5 @@
 export const handle = { public: true };
+
 import { useEffect, useRef, useState } from "react";
 import {
   Form,
@@ -11,6 +12,16 @@ import PocketBase from "pocketbase";
 import type { LoaderData, Revision } from "../types";
 
 const pb = new PocketBase("http://127.0.0.1:8090");
+interface ActionData {
+  errors?: {
+    form?: string;
+    name?: string;
+    timestamp?: string;
+    text?: string;
+  };
+  isAuthorized?: boolean;
+  userEmail?: string;
+}
 
 export async function loader({
   params,
@@ -37,14 +48,18 @@ export async function loader({
   try {
     const revision = await pb
       .collection("assets_revision")
-      .getOne<Revision>(revisionId);
+      .getOne<Revision>(revisionId, { requestKey: null });
     const comments = await pb.collection("comments").getFullList<Comment>({
       filter: `revisionId = "${revisionId}"`,
       sort: "created",
+      requestKey: null,
     });
 
     return { revision, comments, revisionId };
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.log("Fetch aborted, likely due to HMR. Ignoring.");
+    }
     console.error("Loader Error - Failed to fetch revision data:", error);
     throw new Response("This revision could not be found.", { status: 404 });
   }
@@ -58,73 +73,123 @@ export async function action({
   params: { id: string };
 }) {
   const formData = await request.formData();
+  const submissionType = formData.get("_action");
   const revisionId = params.id;
 
-  const newComment = {
-    name: formData.get("name") as string,
-    timestamp: formData.get("timestamp") as string,
-    text: formData.get("text") as string,
-    revisionId: revisionId,
-  };
+  if (submissionType === "authorize") {
+    const email = formData.get("email") as string;
+    if (!email || !email.includes("@")) {
+      return { errors: { form: "Please enter a valid email address." } };
+    }
+    try {
+      await pb.admins.authWithPassword(
+        import.meta.env.VITE_SUPERADMIN_EMAIL,
+        import.meta.env.VITE_SUPERADMIN_PASSWORD,
+        { requestKey: null }
+      );
 
-  const errors: { [key: string]: string } = {};
-  if (!newComment.name.trim()) errors.name = "Name is required.";
-  if (!newComment.text.trim()) errors.text = "Comment text cannot be empty.";
-  if (newComment.timestamp && !/^\d{2}:\d{2}$/.test(newComment.timestamp)) {
-    errors.timestamp = "Invalid timestamp format.";
+      try {
+        await pb
+          .collection("users")
+          .getFirstListItem(`email = "${email}"`, { requestKey: null });
+      } catch (e) {
+        const randomPassword = crypto.randomUUID();
+        await pb.collection("users").create(
+          {
+            email,
+            emailVisibility: false,
+            password: randomPassword,
+            passwordConfirm: randomPassword,
+          },
+          { requestKey: null }
+        );
+      }
+      return { isAuthorized: true, userEmail: email };
+    } catch (err) {
+      console.error("Action Error - Authentication failed:", err);
+      return { errors: { form: "Authentication failed. Please try again." } };
+    }
   }
 
-  if (Object.keys(errors).length > 0) {
-    return { errors };
-  }
-
-  try {
-    await pb.collection("comments").create(newComment);
-    return redirect(request.url);
-  } catch (error) {
-    console.error("Action Error - Failed to create comment:", error);
-    return {
-      errors: { form: "Failed to post comment. Please try again." },
+  if (submissionType === "createComment") {
+    const newComment = {
+      name: formData.get("name") as string,
+      timestamp: formData.get("timestamp") as string,
+      text: formData.get("text") as string,
+      revisionId: revisionId,
     };
+
+    const errors: ActionData["errors"] = {};
+    if (!newComment.name.trim()) errors.name = "Name is required.";
+    if (!newComment.text.trim()) errors.text = "Comment text cannot be empty.";
+    if (newComment.timestamp && !/^\d{2}:\d{2}$/.test(newComment.timestamp)) {
+      errors.timestamp = "Invalid timestamp format.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return { errors, isAuthorized: true, userEmail: newComment.name };
+    }
+
+    try {
+      await pb.collection("comments").create(newComment, { requestKey: null });
+      return redirect(request.url);
+    } catch (error) {
+      console.error("Action Error - Failed to create comment:", error);
+      return {
+        errors: { form: "Failed to post comment. Please try again." },
+        isAuthorized: true,
+        userEmail: newComment.name,
+      };
+    }
   }
+
+  return { errors: { form: "Invalid form submission." } };
 }
 export default function RevisionViewer() {
   const { revision, comments } = useLoaderData() as LoaderData;
-  const actionData = useActionData() as
-    | { errors?: { [key: string]: string } }
-    | undefined;
+  const actionData = useActionData() as ActionData | undefined;
   const navigation = useNavigation();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [reviewer, setReviewer] = useState<{
-    email: string;
-    name: string;
-  } | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("isAuthorized") === "true";
+    }
+    return false;
+  });
+  const [reviewerName, setReviewerName] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("reviewerName");
+    }
+    return null;
+  });
+
   const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(
     null
   );
   const [commentText, setCommentText] = useState("");
 
   useEffect(() => {
-    try {
-      const savedReviewer = sessionStorage.getItem("reviewer");
-      if (savedReviewer) {
-        setReviewer(JSON.parse(savedReviewer));
-      }
-    } catch (error) {
-      console.error("Could not parse reviewer from sessionStorage", error);
-      sessionStorage.removeItem("reviewer");
+    if (actionData?.isAuthorized && actionData.userEmail) {
+      const name = actionData.userEmail.split("@")[0];
+      setIsAuthorized(true);
+      setReviewerName(name);
+      sessionStorage.setItem("isAuthorized", "true");
+      sessionStorage.setItem("reviewerName", name);
     }
-  }, []);
+  }, [actionData]);
 
   useEffect(() => {
-    if (
+    const formData = navigation.formData;
+    const isSuccessfulComment =
       navigation.state === "idle" &&
-      navigation.formData?.get("text") &&
-      !actionData?.errors
-    ) {
+      formData &&
+      formData.get("_action") === "createComment" &&
+      !actionData?.errors;
+
+    if (isSuccessfulComment) {
       setCommentText("");
       setCapturedTimestamp(null);
     }
@@ -143,35 +208,21 @@ export default function RevisionViewer() {
   const handleCommentKeyDown = (
     e: React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
-    if (e.key === "$") {
+    if (e.key === "#") {
       e.preventDefault();
       if (videoRef.current) {
         const currentTime = videoRef.current.currentTime;
         const formattedTime = formatTime(currentTime);
-        const timeTag = `@${formattedTime} `;
-
         setCapturedTimestamp(formattedTime);
         const textarea = e.currentTarget;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const newText =
           commentText.substring(0, start) +
-          timeTag +
+          `@${formattedTime} ` +
           commentText.substring(end);
-
         setCommentText(newText);
       }
-    }
-  };
-
-  const handleAccessSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const email = (formData.get("email") as string).trim();
-    if (email && email.includes("@")) {
-      const reviewerData = { email, name: email.split("@")[0] };
-      sessionStorage.setItem("reviewer", JSON.stringify(reviewerData));
-      setReviewer(reviewerData);
     }
   };
 
@@ -187,28 +238,40 @@ export default function RevisionViewer() {
     }
   };
 
-  if (!reviewer) {
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
         <div className="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">
             Enter your email to view the revision
           </h2>
-          <form onSubmit={handleAccessSubmit}>
+          <Form method="post">
+            <input type="hidden" name="_action" value="authorize" />
+
+            {actionData?.errors?.form && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                {actionData.errors.form}
+              </div>
+            )}
+
             <input
               type="email"
               name="email"
               placeholder="Email address"
               className="border border-gray-300 px-3 py-2 rounded-md mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              disabled={navigation.state === "submitting"}
             />
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md w-full transition-colors font-semibold"
+              disabled={navigation.state === "submitting"}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md w-full transition-colors font-semibold"
             >
-              Access Revision
+              {navigation.state === "submitting"
+                ? "Authenticating..."
+                : "Access Revision"}
             </button>
-          </form>
+          </Form>
         </div>
       </div>
     );
@@ -289,6 +352,7 @@ export default function RevisionViewer() {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold mb-4">Add Comment</h3>
               <Form method="post">
+                <input type="hidden" name="_action" value="createComment" />
                 <input
                   type="hidden"
                   name="timestamp"
@@ -301,12 +365,11 @@ export default function RevisionViewer() {
                       name="name"
                       type="text"
                       required
-                      value={reviewer.name}
+                      value={reviewerName || ""}
                       readOnly
                       className="border border-gray-300 px-3 py-2 rounded-md w-full bg-gray-100 cursor-not-allowed"
                     />
                   </div>
-
                   <div>
                     <label
                       htmlFor="text"

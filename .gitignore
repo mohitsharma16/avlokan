@@ -1,7 +1,21 @@
-.DS_Store
-/node_modules/
-.env
-yarn.lock
-# React Router
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+
+# Build artifacts
+/dist
+/build
+
+# React Router Dev Tools cache
 /.react-router/
-/build/
+
+# Environment variables - Do not commit these!
+.env
+.env.*
+
+
+# Logs and temp files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

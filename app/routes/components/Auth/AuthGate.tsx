@@ -1,5 +1,6 @@
 import { useMatches, Navigate } from "react-router-dom";
 import { useAuth } from "~/routes/contexts/AuthContext";
+import AuthForm from "./AuthForm";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -11,7 +12,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <AuthForm/>
   }
   return <>{children}</>;
 }

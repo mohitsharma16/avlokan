@@ -1,28 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import PocketBase, { type RecordModel } from "pocketbase";
-import type { AssetRevision } from "../../types";
+import type { RecordModel } from "pocketbase";
+import type { AssetRevision, Comment, AssetCardProps } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
-
-import AceEditor from 'react-ace';
-
-import 'ace-builds/src-noconflict/mode-markdown';
-import 'ace-builds/src-noconflict/theme-tomorrow';
-import 'ace-builds/src-noconflict/ext-language_tools';
-
-const pb = new PocketBase("http://127.0.0.1:8090");
-
-interface Comment {
-  id: string;
-  name: string;
-  timestamp: string;
-  text: string;
-  revisionId: string;
-  created: string;
-}
-
-interface AssetCardProps {
-  revision: AssetRevision;
-}
+import { Editor, type OnMount } from "@monaco-editor/react";
+// Remove the problematic import and use editor instance types instead
+// import type * as monaco from "monaco-editor";
 
 interface Command {
   id: string;
@@ -38,17 +20,20 @@ function generateShareLink(revisionId: string): string {
 }
 
 const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
+  const { user, pb } = useAuth();
   const videoUrl = revision.video
     ? pb.files.getURL(revision, revision.video)
     : "";
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Use any type for editor ref to avoid monaco import issues
   const editorRef = useRef<any>(null);
 
-  const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
+  // Use any type for monaco instance
+  const [monacoInstance, setMonacoInstance] = useState<any>(null);
   
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandPalettePosition, setCommandPalettePosition] = useState({ x: 0, y: 0 });
@@ -60,19 +45,11 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     const fetchComments = async () => {
       if (!revision.id) return;
       try {
-        const res: RecordModel[] = await pb.collection("comments").getFullList({
+        const res = await pb.collection("comments").getFullList<Comment>({
           filter: `revisionId = "${revision.id}"`,
           sort: "created",
         });
-        const mapped: Comment[] = res.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          timestamp: r.timestamp,
-          text: r.text,
-          revisionId: r.revisionId,
-          created: r.created,
-        }));
-        setComments(mapped);
+        setComments(res);
       } catch (error) {
         console.error("Error fetching comments:", error);
       }
@@ -80,7 +57,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     if (showModal) {
       fetchComments();
     }
-  }, [showModal, revision.id]);
+  }, [showModal, revision.id, pb]);
 
   const formatTime = (timeInSeconds: number) => {
     const minutes = Math.floor(timeInSeconds / 60)
@@ -94,22 +71,20 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
 
   const insertCurrentTimeFrame = () => {
     if (videoRef.current && editorRef.current) {
+      const editor = editorRef.current;
       const currentTime = videoRef.current.currentTime;
       const formattedTime = formatTime(currentTime);
       const timeTag = `@${formattedTime}`;
       
       setCapturedTimestamp(formattedTime);
       
-      const editor = editorRef.current.editor;
-      const session = editor.getSession();
-      const cursor = editor.getCursorPosition();
-      
-      const range = {
-        start: { row: cursor.row, column: commandStartPos },
-        end: { row: cursor.row, column: cursor.column }
-      };
-      
-      session.replace(range, timeTag);
+      const position = editor.getPosition();
+      if (!position) return;
+
+      // Access monaco through the global window object
+      const monaco = (window as any).monaco;
+      const range = new monaco.Range(position.lineNumber, commandStartPos, position.lineNumber, position.column);
+      editor.executeEdits("insert-timestamp", [{ range, text: timeTag }]);
       editor.focus();
     }
   };
@@ -124,16 +99,14 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       const endFormatted = formatTime(endTime);
       const timeRange = `@${startFormatted}-${endFormatted}`;
       
-      const editor = editorRef.current.editor;
-      const session = editor.getSession();
-      const cursor = editor.getCursorPosition();
-      
-      const range = {
-        start: { row: cursor.row, column: commandStartPos },
-        end: { row: cursor.row, column: cursor.column }
-      };
-      
-      session.replace(range, timeRange);
+      const editor = editorRef.current;
+      const position = editor.getPosition();
+      if (!position) return;
+
+      // Access monaco through the global window object
+      const monaco = (window as any).monaco;
+      const range = new monaco.Range(position.lineNumber, commandStartPos, position.lineNumber, position.column);
+      editor.executeEdits("insert-time-range", [{ range, text: timeRange }]);
       editor.focus();
     }
   };
@@ -164,22 +137,22 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     hideCommandPalette();
   };
 
-  const handleEditorChange = (value: string) => {
-    setCommentText(value);
+  const handleEditorChange = (value: string | undefined) => {
+    setCommentText(value || "");
     
-    if (!editorRef.current) return;
+    if (!editorRef.current || !monacoInstance) return;
     
-    const editor = editorRef.current.editor;
-    const cursor = editor.getCursorPosition();
-    const session = editor.getSession();
-    const line = session.getLine(cursor.row);
-    
-    const beforeCursor = line.substring(0, cursor.column);
+    const editor = editorRef.current;
+    const position = editor.getPosition();
+    if (!position) return;
+
+    const line = editor.getModel()?.getLineContent(position.lineNumber) || "";
+    const beforeCursor = line.substring(0, position.column - 1);
     const dollarMatch = beforeCursor.match(/\$([^$\s]*)$/);
     
     if (dollarMatch) {
       const commandText = dollarMatch[1];
-      const startPos = cursor.column - dollarMatch[0].length;
+      const startPos = beforeCursor.lastIndexOf("$") + 1;
       
       setCommandStartPos(startPos);
       
@@ -192,13 +165,15 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       setSelectedCommandIndex(0);
       
       if (filtered.length > 0) {
-        const editorElement = editor.container;
+        const editorElement = editor.getDomNode();
+        if (!editorElement) return;
         const rect = editorElement.getBoundingClientRect();
-        const lineHeight = editor.renderer.lineHeight;
-        const charWidth = editor.renderer.characterWidth;
-        
-        const x = rect.left + (cursor.column * charWidth);
-        const y = rect.top + ((cursor.row + 1) * lineHeight);
+        const cursorCoords = editor.getScrolledVisiblePosition(position);
+        const x = rect.left + cursorCoords.left;
+        const y =
+          rect.top +
+          cursorCoords.top +
+          editor.getOption(monacoInstance.editor.EditorOption.lineHeight);
         
         setCommandPalettePosition({ x, y });
         setShowCommandPalette(true);
@@ -210,56 +185,40 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     }
   };
 
-  const handleEditorLoad = (editor: any) => {
-    editor.commands.addCommand({
-      name: 'navigateCommandDown',
-      bindKey: { win: 'Down', mac: 'Down' },
-      exec: () => {
-        if (showCommandPalette) {
-          setSelectedCommandIndex(prev => 
-            prev < filteredCommands.length - 1 ? prev + 1 : 0
-          );
-          return true; 
-        }
-        return false; 
-      }
-    });
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    setMonacoInstance(monaco);
 
-    editor.commands.addCommand({
-      name: 'navigateCommandUp',
-      bindKey: { win: 'Up', mac: 'Up' },
-      exec: () => {
-        if (showCommandPalette) {
-          setSelectedCommandIndex(prev => 
-            prev > 0 ? prev - 1 : filteredCommands.length - 1
-          );
-          return true;
-        }
-        return false; 
-      }
-    });
+    editor.onKeyDown((e: any) => {
+      if (!showCommandPalette) return;
 
-    editor.commands.addCommand({
-      name: 'executeCommand',
-      bindKey: { win: 'Enter', mac: 'Enter' },
-      exec: () => {
-        if (showCommandPalette && filteredCommands[selectedCommandIndex]) {
+      const { keyCode } = e;
+      if (
+        [
+          monaco.KeyCode.DownArrow,
+          monaco.KeyCode.UpArrow,
+          monaco.KeyCode.Enter,
+          monaco.KeyCode.Escape,
+        ].includes(keyCode)
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (keyCode === monaco.KeyCode.DownArrow) {
+        setSelectedCommandIndex(
+          (prev) => (prev < filteredCommands.length - 1 ? prev + 1 : 0)
+        );
+      } else if (keyCode === monaco.KeyCode.UpArrow) {
+        setSelectedCommandIndex(
+          (prev) => (prev > 0 ? prev - 1 : filteredCommands.length - 1)
+        );
+      } else if (keyCode === monaco.KeyCode.Enter) {
+        if (filteredCommands[selectedCommandIndex]) {
           executeCommand(filteredCommands[selectedCommandIndex]);
-          return true; 
         }
-        return false;
-      }
-    });
-
-    editor.commands.addCommand({
-      name: 'hideCommandPalette',
-      bindKey: { win: 'Escape', mac: 'Escape' },
-      exec: () => {
-        if (showCommandPalette) {
-          hideCommandPalette();
-          return true; 
-        }
-        return false; 
+      } else if (keyCode === monaco.KeyCode.Escape) {
+        hideCommandPalette();
       }
     });
   };
@@ -286,15 +245,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
         .collection("comments")
         .create(newComment);
 
-      const saved: Comment = {
-        id: created.id,
-        name: created.name,
-        timestamp: created.timestamp,
-        text: created.text,
-        revisionId: created.revisionId,
-        created: created.created,
-      };
-      setComments((prev) => [...prev, saved]);
+      setComments((prev) => [...prev, created as unknown as Comment]);
 
       setCommentText("");
       setCapturedTimestamp(null);
@@ -435,30 +386,24 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
 
               <div className="mt-4 space-y-2 border-t pt-4 relative">
                 <div className="relative">
-                  <AceEditor
-                    ref={editorRef}
-                    className="w-full border rounded-md"
-                    placeholder="Write your comment... (Press $ to open commands)"
-                    mode="markdown"
-                    theme="tomorrow"
-                    fontSize={14}
-                    lineHeight={19}
-                    width="100%"
+                  {/* Monaco Editor doesn't have a built-in placeholder. This is a common workaround. */}
+                  {!commentText && (
+                    <div className="absolute top-2 left-2 text-gray-400 pointer-events-none z-10">
+                      Write your comment... (Press $ to open commands)
+                    </div>
+                  )}
+                  <Editor
                     height="120px"
-                    wrapEnabled={true}
+                    language="markdown"
+                    theme="vs-light"
                     value={commentText}
                     onChange={handleEditorChange}
-                    onLoad={handleEditorLoad}
-                    name="CommentBox"
-                    showPrintMargin={false}
-                    showGutter={false}
-                    enableMobileMenu={true}
-                    enableSnippets={true}
-                    highlightActiveLine={false}
-                    editorProps={{ $blockScrolling: true }}
-                    setOptions={{
-                      enableBasicAutocompletion: true,
-                      enableLiveAutocompletion: true,
+                    onMount={handleEditorMount}
+                    options={{
+                      minimap: { enabled: false },
+                      wordWrap: "on",
+                      scrollBeyondLastLine: false,
+                      fontSize: 14,
                     }}
                   />
                   

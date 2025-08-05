@@ -2,9 +2,28 @@ import React, { useState, useEffect, useRef } from "react";
 import type { RecordModel } from "pocketbase";
 import type { AssetRevision, Comment, AssetCardProps } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
-import { Editor, type OnMount } from "@monaco-editor/react";
-// Remove the problematic import and use editor instance types instead
-// import type * as monaco from "monaco-editor";
+
+import AceEditor from "react-ace";
+
+import "ace-builds/src-noconflict/mode-markdown";
+import "ace-builds/src-noconflict/theme-tomorrow";
+import "ace-builds/src-noconflict/ext-language_tools";
+import { Editor } from "@monaco-editor/react";
+
+const pb = new PocketBase("http://127.0.0.1:8090");
+
+interface Comment {
+  id: string;
+  name: string;
+  timestamp: string;
+  text: string;
+  revisionId: string;
+  created: string;
+}
+
+interface AssetCardProps {
+  revision: AssetRevision;
+}
 
 interface Command {
   id: string;
@@ -14,7 +33,7 @@ interface Command {
 }
 
 function generateShareLink(revisionId: string): string {
-  const expires = Date.now() + 60 * 60 * 1000; // 1 hour
+  const expires = Date.now() + 60 * 60 * 1000;
   const token = crypto.randomUUID();
   return `http://localhost:5173/revision/${revisionId}?token=${token}&expires=${expires}`;
 }
@@ -31,12 +50,15 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
-  // Use any type for monaco instance
-  const [monacoInstance, setMonacoInstance] = useState<any>(null);
-  
+  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(
+    null
+  );
+
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [commandPalettePosition, setCommandPalettePosition] = useState({ x: 0, y: 0 });
+  const [commandPalettePosition, setCommandPalettePosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const [commandStartPos, setCommandStartPos] = useState(0);
   const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
@@ -75,16 +97,19 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       const currentTime = videoRef.current.currentTime;
       const formattedTime = formatTime(currentTime);
       const timeTag = `@${formattedTime}`;
-      
-      setCapturedTimestamp(formattedTime);
-      
-      const position = editor.getPosition();
-      if (!position) return;
 
-      // Access monaco through the global window object
-      const monaco = (window as any).monaco;
-      const range = new monaco.Range(position.lineNumber, commandStartPos, position.lineNumber, position.column);
-      editor.executeEdits("insert-timestamp", [{ range, text: timeTag }]);
+      setCapturedTimestamp(formattedTime);
+
+      const editor = editorRef.current.editor;
+      const session = editor.getSession();
+      const cursor = editor.getCursorPosition();
+
+      const range = {
+        start: { row: cursor.row, column: commandStartPos },
+        end: { row: cursor.row, column: cursor.column },
+      };
+
+      session.replace(range, timeTag);
       editor.focus();
     }
   };
@@ -92,38 +117,42 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const insertTimeRange = () => {
     if (videoRef.current && editorRef.current) {
       const currentTime = videoRef.current.currentTime;
-      const startTime = Math.max(0, currentTime - 30); 
-      const endTime = currentTime + 30; 
-      
+      const startTime = Math.max(0, currentTime);
+      const endTime = currentTime + 5;
+
       const startFormatted = formatTime(startTime);
       const endFormatted = formatTime(endTime);
       const timeRange = `@${startFormatted}-${endFormatted}`;
-      
-      const editor = editorRef.current;
-      const position = editor.getPosition();
-      if (!position) return;
 
-      // Access monaco through the global window object
-      const monaco = (window as any).monaco;
-      const range = new monaco.Range(position.lineNumber, commandStartPos, position.lineNumber, position.column);
-      editor.executeEdits("insert-time-range", [{ range, text: timeRange }]);
+      setCapturedTimestamp(`${startFormatted}-${endFormatted}`);
+
+      const editor = editorRef.current.editor;
+      const session = editor.getSession();
+      const cursor = editor.getCursorPosition();
+
+      const range = {
+        start: { row: cursor.row, column: commandStartPos },
+        end: { row: cursor.row, column: cursor.column },
+      };
+
+      session.replace(range, timeRange);
       editor.focus();
     }
   };
 
   const commands: Command[] = [
     {
-      id: 'current-time',
-      label: 'Current Time Frame',
-      description: 'Insert current video timestamp',
-      action: insertCurrentTimeFrame
+      id: "current-time",
+      label: "Current Time Frame",
+      description: "Insert current video timestamp",
+      action: insertCurrentTimeFrame,
     },
     {
-      id: 'time-range',
-      label: 'Time Range',
-      description: 'Insert time range (±30 seconds)',
-      action: insertTimeRange
-    }
+      id: "time-range",
+      label: "Time Range",
+      description: "Insert time range (±5 seconds)",
+      action: insertTimeRange,
+    },
   ];
 
   const hideCommandPalette = () => {
@@ -137,44 +166,44 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     hideCommandPalette();
   };
 
-  const handleEditorChange = (value: string | undefined) => {
-    setCommentText(value || "");
-    
-    if (!editorRef.current || !monacoInstance) return;
-    
-    const editor = editorRef.current;
-    const position = editor.getPosition();
-    if (!position) return;
+  const handleEditorChange = (value: string | any) => {
+    setCommentText(value);
 
-    const line = editor.getModel()?.getLineContent(position.lineNumber) || "";
-    const beforeCursor = line.substring(0, position.column - 1);
+    if (!editorRef.current) return;
+
+    const editor = editorRef.current.editor;
+    const cursor = editor.getCursorPosition();
+    const session = editor.getSession();
+    const line = session.getLine(cursor.row);
+
+    const beforeCursor = line.substring(0, cursor.column);
     const dollarMatch = beforeCursor.match(/\$([^$\s]*)$/);
-    
+
     if (dollarMatch) {
       const commandText = dollarMatch[1];
-      const startPos = beforeCursor.lastIndexOf("$") + 1;
-      
+      const startPos = cursor.column - dollarMatch[0].length;
+
       setCommandStartPos(startPos);
-      
-      const filtered = commands.filter(cmd => 
-        cmd.label.toLowerCase().includes(commandText.toLowerCase()) ||
-        cmd.description.toLowerCase().includes(commandText.toLowerCase())
+
+      const filtered = commands.filter(
+        (cmd) =>
+          cmd.label.toLowerCase().includes(commandText.toLowerCase()) ||
+          cmd.description.toLowerCase().includes(commandText.toLowerCase())
       );
-      
+
       setFilteredCommands(filtered);
       setSelectedCommandIndex(0);
-      
+
       if (filtered.length > 0) {
         const editorElement = editor.getDomNode();
         if (!editorElement) return;
         const rect = editorElement.getBoundingClientRect();
-        const cursorCoords = editor.getScrolledVisiblePosition(position);
-        const x = rect.left + cursorCoords.left;
-        const y =
-          rect.top +
-          cursorCoords.top +
-          editor.getOption(monacoInstance.editor.EditorOption.lineHeight);
-        
+        const lineHeight = editor.renderer.lineHeight;
+        const charWidth = editor.renderer.characterWidth;
+
+        const x = rect.left + cursor.column * charWidth;
+        const y = rect.top + (cursor.row + 1) * lineHeight;
+
         setCommandPalettePosition({ x, y });
         setShowCommandPalette(true);
       } else {
@@ -185,46 +214,62 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     }
   };
 
-  const handleEditorMount: OnMount = (editor, monaco) => {
-    editorRef.current = editor;
-    setMonacoInstance(monaco);
-
-    editor.onKeyDown((e: any) => {
-      if (!showCommandPalette) return;
-
-      const { keyCode } = e;
-      if (
-        [
-          monaco.KeyCode.DownArrow,
-          monaco.KeyCode.UpArrow,
-          monaco.KeyCode.Enter,
-          monaco.KeyCode.Escape,
-        ].includes(keyCode)
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      if (keyCode === monaco.KeyCode.DownArrow) {
-        setSelectedCommandIndex(
-          (prev) => (prev < filteredCommands.length - 1 ? prev + 1 : 0)
-        );
-      } else if (keyCode === monaco.KeyCode.UpArrow) {
-        setSelectedCommandIndex(
-          (prev) => (prev > 0 ? prev - 1 : filteredCommands.length - 1)
-        );
-      } else if (keyCode === monaco.KeyCode.Enter) {
-        if (filteredCommands[selectedCommandIndex]) {
-          executeCommand(filteredCommands[selectedCommandIndex]);
+  const handleEditorLoad = (editor: any) => {
+    editor.commands.addCommand({
+      name: "navigateCommandDown",
+      bindKey: { win: "Down", mac: "Down" },
+      exec: () => {
+        if (showCommandPalette) {
+          setSelectedCommandIndex((prev) =>
+            prev < filteredCommands.length - 1 ? prev + 1 : 0
+          );
+          return true;
         }
-      } else if (keyCode === monaco.KeyCode.Escape) {
-        hideCommandPalette();
-      }
+        return false;
+      },
+    });
+
+    editor.commands.addCommand({
+      name: "navigateCommandUp",
+      bindKey: { win: "Up", mac: "Up" },
+      exec: () => {
+        if (showCommandPalette) {
+          setSelectedCommandIndex((prev) =>
+            prev > 0 ? prev - 1 : filteredCommands.length - 1
+          );
+          return true;
+        }
+        return false;
+      },
+    });
+
+    editor.commands.addCommand({
+      name: "executeCommand",
+      bindKey: { win: "Enter", mac: "Enter" },
+      exec: () => {
+        if (showCommandPalette && filteredCommands[selectedCommandIndex]) {
+          executeCommand(filteredCommands[selectedCommandIndex]);
+          return true;
+        }
+        return false;
+      },
+    });
+
+    editor.commands.addCommand({
+      name: "hideCommandPalette",
+      bindKey: { win: "Escape", mac: "Escape" },
+      exec: () => {
+        if (showCommandPalette) {
+          hideCommandPalette();
+          return true;
+        }
+        return false;
+      },
     });
   };
 
   const handleSubmit = async () => {
-    const commenterName = user?.name || user?.email;
+    const commenterName = user?.name || user?.email.split("@");
 
     if (!commenterName || !commentText.trim()) {
       alert(
@@ -235,7 +280,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
 
     try {
       const newComment = {
-        name: commenterName,
+        name: commenterName[0],
         timestamp: capturedTimestamp || "",
         text: commentText,
         revisionId: revision.id,
@@ -330,7 +375,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               )}
             </div>
 
-            <div className="w-96 bg-white border-l border-gray-200 p-4 flex flex-col">
+            <div className=" bg-white border-l border-gray-200 p-4 flex flex-col">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h2 className="text-lg font-semibold">
                   Comments ({comments.length})
@@ -343,13 +388,13 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              <div className="flex-1 overflow-y-auto pr-1">
                 {comments.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500">No comments yet.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                  <div className="space-y-4 max-h-[90vh] overflow-y-auto pr-2">
                     {comments.map((comment) => (
                       <div
                         key={comment.id}
@@ -384,61 +429,105 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 )}
               </div>
 
+              {showCommandPalette && filteredCommands.length > 0 && (
+                <div
+                  className=" bg-white border border-gray-300 rounded-lg shadow-lg z-[60] min-w-64"
+                  style={{
+                    left: `${commandPalettePosition.x}px`,
+                    top: `${commandPalettePosition.y}px`,
+                  }}
+                >
+                  <div className="p-2">
+                    <div className="text-xs text-gray-500 mb-2 px-2">
+                      COMMANDS
+                    </div>
+                    {filteredCommands.map((command, index) => (
+                      <div
+                        key={command.id}
+                        className={`flex items-center px-3 py-2 rounded cursor-pointer transition-colors ${
+                          index === selectedCommandIndex
+                            ? "bg-blue-100 text-blue-900"
+                            : "hover:bg-gray-100"
+                        }`}
+                        onClick={() => executeCommand(command)}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {command.label}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {command.description}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-400">
+                    ↑↓ to navigate • Enter to select • Esc to dismiss
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 space-y-2 border-t pt-4 relative">
                 <div className="relative">
-                  {/* Monaco Editor doesn't have a built-in placeholder. This is a common workaround. */}
-                  {!commentText && (
-                    <div className="absolute top-2 left-2 text-gray-400 pointer-events-none z-10">
-                      Write your comment... (Press $ to open commands)
-                    </div>
-                  )}
-                  <Editor
+                  {/* <AceEditor
+                    ref={editorRef}
+                    className="w-full border rounded-md"
+                    placeholder="Write your comment... (Press $ to open commands)"
+                    mode="markdown"
+                    theme="tomorrow"
+                    fontSize={14}
+                    lineHeight={19}
+                    width="100%"
                     height="120px"
                     language="markdown"
                     theme="vs-light"
                     value={commentText}
                     onChange={handleEditorChange}
-                    onMount={handleEditorMount}
+                    onLoad={handleEditorLoad}
+                    name="CommentBox"
+                    showPrintMargin={false}
+                    showGutter={false}
+                    enableMobileMenu={true}
+                    enableSnippets={true}
+                    highlightActiveLine={false}
+                    editorProps={{ $blockScrolling: false }}
+                    setOptions={{
+                      enableBasicAutocompletion: true,
+                      enableLiveAutocompletion: true,
+                    }}
+                  /> */}
+                  <Editor
+                    className="w-full border rounded-md"
+                    theme="light"
+                    height="120px"
+                    defaultLanguage="markdown"
+                    value={commentText}
+                    onChange={handleEditorChange}
+                    // onMount={handleEditorLoad}
                     options={{
-                      minimap: { enabled: false },
-                      wordWrap: "on",
-                      scrollBeyondLastLine: false,
+                      placeholder:
+                        "Write Your comment... (Press $ to open commands)",
                       fontSize: 14,
+                      minimap: {
+                        enabled: "false",
+                      },
+                      contextMenu: "false",
+                      bracketPairGuides: {
+                        indentation: false,
+                        highlightActiveIndentation: false,
+                      },
+                      lineDecorationsWidth: 0,
+                      lineNumbersMinChars: 0,
+                      lineNumbers: "off",
+                      glyphMargin: "false",
+                      scrollbar: {
+                        vertical: "auto",
+                      },
+                      wordWrap: "on",
+                      folding: "false",
                     }}
                   />
-                  
-                  {showCommandPalette && filteredCommands.length > 0 && (
-                    <div 
-                      className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-[60] min-w-64"
-                      style={{
-                        left: `${commandPalettePosition.x}px`,
-                        top: `${commandPalettePosition.y}px`,
-                      }}
-                    >
-                      <div className="p-2">
-                        <div className="text-xs text-gray-500 mb-2 px-2">COMMANDS</div>
-                        {filteredCommands.map((command, index) => (
-                          <div
-                            key={command.id}
-                            className={`flex items-center px-3 py-2 rounded cursor-pointer transition-colors ${
-                              index === selectedCommandIndex
-                                ? 'bg-blue-100 text-blue-900'
-                                : 'hover:bg-gray-100'
-                            }`}
-                            onClick={() => executeCommand(command)}
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-sm">{command.label}</div>
-                              <div className="text-xs text-gray-500">{command.description}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-400">
-                        ↑↓ to navigate • Enter to select • Esc to dismiss
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <button

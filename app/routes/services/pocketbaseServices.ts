@@ -4,7 +4,7 @@ class PocketBaseService {
   private pb: PocketBase;
 
   constructor() {
-    this.pb = new PocketBase("http://127.0.0.1:8090");
+    this.pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
   }
 
   getFileUrl(record: any, filename: string): string {

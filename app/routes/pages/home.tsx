@@ -1,4 +1,4 @@
-export const handle = { protected: true };
+export const handle = { public: false };
 import React, { useEffect, useState } from "react";
 import type { RecordModel } from "pocketbase";
 import AssetCard from "../components/AssetCard/AssetCard";

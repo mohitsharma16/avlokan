@@ -11,7 +11,7 @@ import {
 import PocketBase from "pocketbase";
 import type { LoaderData, Revision } from "../types";
 
-const pb = new PocketBase("http://127.0.0.1:8090");
+const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
 interface ActionData {
   errors?: {
     form?: string;

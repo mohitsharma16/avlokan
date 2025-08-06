@@ -1,13 +1,11 @@
 import React, { useState } from "react";
-import PocketBase from "pocketbase";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface RevisionFormProps {
   assetId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const pb = new PocketBase("http://127.0.0.1:8090");
 
 const RevisionForm: React.FC<RevisionFormProps> = ({
   assetId,
@@ -18,6 +16,7 @@ const RevisionForm: React.FC<RevisionFormProps> = ({
   const [description, setDescription] = useState("");
   const [video, setVideo] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const { pb } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

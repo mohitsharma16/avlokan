@@ -11,6 +11,12 @@ interface Command {
   action: () => void;
 }
 
+interface TimestampPill {
+  id: string;
+  text: string;
+  timestamp: string;
+}
+
 function generateShareLink(revisionId: string): string {
   const expires = Date.now() + 60 * 60 * 1000;
   const token = crypto.randomUUID();
@@ -28,9 +34,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(
-    null
-  );
+  const [timestampPills, setTimestampPills] = useState<TimestampPill[]>([]);
   const [monacoInstance, setMonacoInstance] = useState<any>(null);
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -158,7 +162,13 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       const formattedTime = formatTime(currentTime);
       const timeTag = `@${formattedTime}`;
 
-      setCapturedTimestamp(formattedTime);
+      const newPill: TimestampPill = {
+        id: crypto.randomUUID(),
+        text: timeTag,
+        timestamp: formattedTime,
+      };
+
+      setTimestampPills((prev) => [...prev, newPill]);
 
       const position = editor.getPosition();
       if (!position) return;
@@ -170,7 +180,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
         position.column
       );
 
-      editor.executeEdits("insert-timestamp", [{ range, text: timeTag }]);
+      editor.executeEdits("remove-command", [{ range, text: "" }]);
       editor.focus();
     }
   };
@@ -185,6 +195,14 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       const endFormatted = formatTime(endTime);
       const timeRange = `@${startFormatted}-${endFormatted}`;
 
+      const newPill: TimestampPill = {
+        id: crypto.randomUUID(),
+        text: timeRange,
+        timestamp: `${startFormatted}-${endFormatted}`,
+      };
+
+      setTimestampPills((prev) => [...prev, newPill]);
+
       const editor = editorRef.current;
       const position = editor.getPosition();
       if (!position) return;
@@ -196,7 +214,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
         position.column
       );
 
-      editor.executeEdits("insert-time-range", [{ range, text: timeRange }]);
+      editor.executeEdits("remove-command", [{ range, text: "" }]);
       editor.focus();
     }
   };
@@ -225,6 +243,10 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const executeCommand = (command: Command) => {
     command.action();
     hideCommandPalette();
+  };
+
+  const removePill = (pillId: string) => {
+    setTimestampPills((prev) => prev.filter((pill) => pill.id !== pillId));
   };
 
   const handleEditorChange = (value: string | undefined) => {
@@ -291,9 +313,12 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     }
 
     try {
+      const capturedTimestamp =
+        timestampPills.length > 0 ? timestampPills[0].timestamp : "";
+
       const newComment = {
         name: commenterName[0],
-        timestamp: capturedTimestamp || "",
+        timestamp: capturedTimestamp,
         text: commentText,
         revisionId: revision.id,
       };
@@ -305,7 +330,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       setComments((prev) => [...prev, created as unknown as Comment]);
 
       setCommentText("");
-      setCapturedTimestamp(null);
+      setTimestampPills([]);
     } catch (error: any) {
       console.error("Error saving comment:", error);
       alert(`Failed to post comment. Error: ${error.message}`);
@@ -481,6 +506,26 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               )}
 
               <div className="mt-4 space-y-2 border-t pt-4 relative">
+                {timestampPills.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {timestampPills.map((pill) => (
+                      <div
+                        key={pill.id}
+                        className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium border border-blue-200"
+                      >
+                        <span>{pill.text}</span>
+                        <button
+                          onClick={() => removePill(pill.id)}
+                          className="text-blue-600 hover:text-blue-800 ml-1 focus:outline-none"
+                          title="Remove timestamp"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="relative">
                   <Editor
                     className="w-full border rounded-md"

@@ -38,13 +38,46 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [monacoInstance, setMonacoInstance] = useState<any>(null);
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [commandPalettePosition, setCommandPalettePosition] = useState({
-    x: 0,
-    y: 0,
-  });
   const [commandStartPos, setCommandStartPos] = useState(0);
   const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const newWidth = window.innerWidth - e.clientX;
+      const minWidth = 280;
+      const maxWidth = window.innerWidth * 0.6;
+
+      setSidebarWidth(Math.max(minWidth, Math.min(newWidth, maxWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    if (isResizing) {
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
   useEffect(() => {
     const fetchComments = async () => {
@@ -102,10 +135,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
           setFilteredCommands(filtered);
 
           if (filtered.length > 0) {
-            const editorElement = editor.getDomNode();
-            if (!editorElement) return;
-            const rect = editorElement.getBoundingClientRect();
-            setCommandPalettePosition({ x: rect.left + 10, y: rect.top - 10 });
             setShowCommandPalette(true);
           }
         }
@@ -194,7 +223,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       const startFormatted = formatTime(startTime);
       const endFormatted = formatTime(endTime);
       const timeRange = `@${startFormatted}-${endFormatted}`;
-
       const newPill: TimestampPill = {
         id: crypto.randomUUID(),
         text: timeRange,
@@ -202,7 +230,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       };
 
       setTimestampPills((prev) => [...prev, newPill]);
-
       const editor = editorRef.current;
       const position = editor.getPosition();
       if (!position) return;
@@ -284,10 +311,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       setFilteredCommands(filtered);
 
       if (filtered.length > 0) {
-        const editorElement = editor.getDomNode();
-        if (!editorElement) return;
-        const rect = editorElement.getBoundingClientRect();
-        setCommandPalettePosition({ x: rect.left + 10, y: rect.top - 10 });
         setShowCommandPalette(true);
       } else {
         hideCommandPalette();
@@ -382,7 +405,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
           )}
           {!!revision.description && (
             <div
-              className="text-gray-700 text-sm leading-relaxed prose max-w-none"
+              className="text-gray-700 text-sm leading-relaxed prose max-w-none break-words overflow-wrap-anywhere"
               dangerouslySetInnerHTML={{ __html: revision.description }}
             />
           )}
@@ -412,7 +435,15 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               )}
             </div>
 
-            <div className=" bg-white border-l border-gray-200 p-4 flex flex-col">
+            <div
+              className="bg-white border-l border-gray-200 p-4 flex flex-col min-h-0 relative"
+              style={{ width: `${sidebarWidth}px` }}
+            >
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize z-10 transition-colors"
+                onMouseDown={handleResizeStart}
+              />
+
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h2 className="text-lg font-semibold">
                   Comments ({comments.length})
@@ -425,13 +456,13 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto  pr-1">
+              <div className="flex-1 overflow-y-auto pr-1 min-h-0">
                 {comments.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="flex items-center justify-center h-32">
                     <p className="text-gray-500">No comments yet.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-[90vh] overflow-y-auto pr-2">
+                  <div className="space-y-4">
                     {comments.map((comment) => (
                       <div
                         key={comment.id}
@@ -457,7 +488,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                             {new Date(comment.created).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-gray-700 whitespace-pre-wrap text-sm">
+                        <p className="text-gray-700 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
                           {comment.text}
                         </p>
                       </div>
@@ -467,13 +498,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </div>
 
               {showCommandPalette && filteredCommands.length > 0 && (
-                <div
-                  className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-[60] min-w-64"
-                  style={{
-                    left: `${commandPalettePosition.x}px`,
-                    top: `${commandPalettePosition.y}px`,
-                  }}
-                >
+                <div className="bg-white border border-gray-300 rounded-lg shadow-lg mb-2 min-w-64">
                   <div className="p-2">
                     <div className="text-xs text-gray-500 mb-2 px-2">
                       COMMANDS
@@ -505,63 +530,65 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 </div>
               )}
 
-              <div className="mt-4 space-y-2 border-t pt-4 relative">
-                {timestampPills.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {timestampPills.map((pill) => (
-                      <div
-                        key={pill.id}
-                        className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium border border-blue-200"
-                      >
-                        <span>{pill.text}</span>
-                        <button
-                          onClick={() => removePill(pill.id)}
-                          className="text-blue-600 hover:text-blue-800 ml-1 focus:outline-none"
-                          title="Remove timestamp"
+              <div className="space-y-2 relative">
+                <div className="border-t pt-4">
+                  {timestampPills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {timestampPills.map((pill) => (
+                        <div
+                          key={pill.id}
+                          className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium border border-blue-200"
                         >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                          <span>{pill.text}</span>
+                          <button
+                            onClick={() => removePill(pill.id)}
+                            className="text-blue-600 hover:text-blue-800 ml-1 focus:outline-none"
+                            title="Remove timestamp"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <Editor
+                      className="w-full border rounded-md"
+                      theme="light"
+                      height="120px"
+                      defaultLanguage="markdown"
+                      value={commentText}
+                      onChange={handleEditorChange}
+                      onMount={handleEditorMount}
+                      options={{
+                        placeholder:
+                          "Write Your comment... (Press $ to open commands)",
+                        fontSize: 14,
+                        minimap: { enabled: false },
+                        contextMenu: false,
+                        bracketPairGuides: {
+                          indentation: false,
+                          highlightActiveIndentation: false,
+                        },
+                        lineDecorationsWidth: 0,
+                        lineNumbersMinChars: 0,
+                        lineNumbers: "off",
+                        glyphMargin: false,
+                        scrollbar: { vertical: "auto" },
+                        wordWrap: "on",
+                        folding: false,
+                      }}
+                    />
                   </div>
-                )}
 
-                <div className="relative">
-                  <Editor
-                    className="w-full border rounded-md"
-                    theme="light"
-                    height="120px"
-                    defaultLanguage="markdown"
-                    value={commentText}
-                    onChange={handleEditorChange}
-                    onMount={handleEditorMount}
-                    options={{
-                      placeholder:
-                        "Write Your comment... (Press $ to open commands)",
-                      fontSize: 14,
-                      minimap: { enabled: false },
-                      contextMenu: false,
-                      bracketPairGuides: {
-                        indentation: false,
-                        highlightActiveIndentation: false,
-                      },
-                      lineDecorationsWidth: 0,
-                      lineNumbersMinChars: 0,
-                      lineNumbers: "off",
-                      glyphMargin: false,
-                      scrollbar: { vertical: "auto" },
-                      wordWrap: "on",
-                      folding: false,
-                    }}
-                  />
+                  <button
+                    className="bg-green-600 text-white px-3 py-1 rounded w-full mt-2"
+                    onClick={handleSubmit}
+                  >
+                    Post Comment
+                  </button>
                 </div>
-
-                <button
-                  className="bg-green-600 text-white px-3 py-1 rounded w-full"
-                  onClick={handleSubmit}
-                >
-                  Post Comment
-                </button>
               </div>
             </div>
           </div>

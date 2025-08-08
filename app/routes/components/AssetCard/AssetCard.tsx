@@ -422,7 +422,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                                 onClick={() =>
                                   seekToTimestamp(comment.timestamp)
                                 }
-                                className="text-blue-600 hover:text-blue-800 underline font-mono text-sm"
+                                className="  bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
                               >
                                 {comment.timestamp}
                               </button>

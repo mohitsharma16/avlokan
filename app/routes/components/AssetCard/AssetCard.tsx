@@ -28,11 +28,16 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
+  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(
+    null
+  );
   const [monacoInstance, setMonacoInstance] = useState<any>(null);
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [commandPalettePosition, setCommandPalettePosition] = useState({ x: 0, y: 0 });
+  const [commandPalettePosition, setCommandPalettePosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const [commandStartPos, setCommandStartPos] = useState(0);
   const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
@@ -77,12 +82,18 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
           const startPos = beforeCursor.lastIndexOf("$");
 
           setCommandStartPos(startPos);
-          const filtered = dollarMatch && dollarMatch[1] !== ""
-            ? commands.filter(cmd =>
-                cmd.label.toLowerCase().includes(dollarMatch[1].toLowerCase()) ||
-                cmd.description.toLowerCase().includes(dollarMatch[1].toLowerCase())
-              )
-            : commands;
+          const filtered =
+            dollarMatch && dollarMatch[1] !== ""
+              ? commands.filter(
+                  (cmd) =>
+                    cmd.label
+                      .toLowerCase()
+                      .includes(dollarMatch[1].toLowerCase()) ||
+                    cmd.description
+                      .toLowerCase()
+                      .includes(dollarMatch[1].toLowerCase())
+                )
+              : commands;
 
           setFilteredCommands(filtered);
 
@@ -97,15 +108,14 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
         return;
       }
 
-      
       if (e.keyCode === monacoInstance.KeyCode.DownArrow) {
         e.preventDefault();
-        setSelectedCommandIndex(prev =>
+        setSelectedCommandIndex((prev) =>
           prev < filteredCommands.length - 1 ? prev + 1 : 0
         );
       } else if (e.keyCode === monacoInstance.KeyCode.UpArrow) {
         e.preventDefault();
-        setSelectedCommandIndex(prev =>
+        setSelectedCommandIndex((prev) =>
           prev > 0 ? prev - 1 : filteredCommands.length - 1
         );
       } else if (e.keyCode === monacoInstance.KeyCode.Enter) {
@@ -124,7 +134,12 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     return () => {
       disposable.dispose();
     };
-  }, [showCommandPalette, filteredCommands, selectedCommandIndex, monacoInstance]);
+  }, [
+    showCommandPalette,
+    filteredCommands,
+    selectedCommandIndex,
+    monacoInstance,
+  ]);
 
   const formatTime = (timeInSeconds: number) => {
     const minutes = Math.floor(timeInSeconds / 60)
@@ -188,17 +203,17 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
 
   const commands: Command[] = [
     {
-      id: 'current-time',
-      label: 'Current Time Frame',
-      description: 'Insert current video timestamp',
-      action: insertCurrentTimeFrame
+      id: "current-time",
+      label: "Current Time Frame",
+      description: "Insert current video timestamp",
+      action: insertCurrentTimeFrame,
     },
     {
-      id: 'time-range',
-      label: 'Time Range',
-      description: 'Insert time range (±30 seconds)',
-      action: insertTimeRange
-    }
+      id: "time-range",
+      label: "Time Range",
+      description: "Insert time range (±30 seconds)",
+      action: insertTimeRange,
+    },
   ];
 
   const hideCommandPalette = () => {
@@ -233,12 +248,16 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       const startPos = beforeCursor.lastIndexOf("$");
       setCommandStartPos(startPos);
 
-      const filtered = commandText === ""
-        ? commands
-        : commands.filter(cmd =>
-            cmd.label.toLowerCase().includes(commandText.toLowerCase()) ||
-            cmd.description.toLowerCase().includes(commandText.toLowerCase())
-          );
+      const filtered =
+        commandText === ""
+          ? commands
+          : commands.filter(
+              (cmd) =>
+                cmd.label.toLowerCase().includes(commandText.toLowerCase()) ||
+                cmd.description
+                  .toLowerCase()
+                  .includes(commandText.toLowerCase())
+            );
 
       setFilteredCommands(filtered);
 
@@ -381,7 +400,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              <div className="flex-1 overflow-y-auto  pr-1">
                 {comments.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500">No comments yet.</p>
@@ -422,6 +441,45 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 )}
               </div>
 
+              {showCommandPalette && filteredCommands.length > 0 && (
+                <div
+                  className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-[60] min-w-64"
+                  style={{
+                    left: `${commandPalettePosition.x}px`,
+                    top: `${commandPalettePosition.y}px`,
+                  }}
+                >
+                  <div className="p-2">
+                    <div className="text-xs text-gray-500 mb-2 px-2">
+                      COMMANDS
+                    </div>
+                    {filteredCommands.map((command, index) => (
+                      <div
+                        key={command.id}
+                        className={`flex items-center px-3 py-2 rounded cursor-pointer transition-colors ${
+                          index === selectedCommandIndex
+                            ? "bg-blue-100 text-blue-900"
+                            : "hover:bg-gray-100"
+                        }`}
+                        onClick={() => executeCommand(command)}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {command.label}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {command.description}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-400">
+                    ↑↓ to navigate • Enter to select • Esc to dismiss
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 space-y-2 border-t pt-4 relative">
                 <div className="relative">
                   <Editor
@@ -451,40 +509,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                       folding: false,
                     }}
                   />
-
-                                    {showCommandPalette && filteredCommands.length > 0 && (
-                    <div 
-                      className="fixed bg-white border border-gray-300 rounded-lg shadow-lg z-[60] min-w-64"
-                      style={{
-                        left: `${commandPalettePosition.x}px`,
-                        top: `${commandPalettePosition.y}px`,
-                      }}
-                    >
-                      <div className="p-2">
-                        <div className="text-xs text-gray-500 mb-2 px-2">COMMANDS</div>
-                        {filteredCommands.map((command, index) => (
-                          <div
-                            key={command.id}
-                            className={`flex items-center px-3 py-2 rounded cursor-pointer transition-colors ${
-                              index === selectedCommandIndex
-                                ? 'bg-blue-100 text-blue-900'
-                                : 'hover:bg-gray-100'
-                            }`}
-                            onClick={() => executeCommand(command)}
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-sm">{command.label}</div>
-                              <div className="text-xs text-gray-500">{command.description}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-400">
-                        ↑↓ to navigate • Enter to select • Esc to dismiss
-                      </div>
-                    </div>
-                  )}
-            
                 </div>
 
                 <button

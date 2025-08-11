@@ -16,6 +16,8 @@
 
 yarn.lock
 
+.idea
+
 # Logs and temp files
 npm-debug.log*
 yarn-debug.log*

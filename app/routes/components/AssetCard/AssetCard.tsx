@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { RecordModel } from "pocketbase";
 import type { AssetRevision, Comment, AssetCardProps } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { Editor, type OnMount } from "@monaco-editor/react";
+import { Canvas, FabricObject, Circle, Rect, Textbox, PencilBrush } from "fabric";
 
 interface Command {
   id: string;
@@ -17,6 +18,13 @@ interface TimestampPill {
   timestamp: string;
 }
 
+interface Annotation {
+  id: string;
+  timestamp: number;
+  canvasData: any;
+  objects: any[];
+}
+
 function generateShareLink(revisionId: string): string {
   const expires = Date.now() + 60 * 60 * 1000;
   const token = crypto.randomUUID();
@@ -29,6 +37,9 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     ? pb.files.getURL(revision, revision.video)
     : "";
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fabricCanvasRef = useRef<Canvas | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<any>(null);
 
   const [showModal, setShowModal] = useState(false);
@@ -37,6 +48,15 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [timestampPills, setTimestampPills] = useState<TimestampPill[]>([]);
   const [monacoInstance, setMonacoInstance] = useState<any>(null);
 
+  // Annotation states
+  const [isAnnotating, setIsAnnotating] = useState(false);
+  const [annotationTool, setAnnotationTool] = useState<'pen' | 'rectangle' | 'circle' | 'text' | 'arrow'>('pen');
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [currentAnnotation, setCurrentAnnotation] = useState<Annotation | null>(null);
+  const [brushColor, setBrushColor] = useState('#ff0000');
+  const [brushSize, setBrushSize] = useState(3);
+  const [showAnnotationTools, setShowAnnotationTools] = useState(false);
+
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandStartPos, setCommandStartPos] = useState(0);
   const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
@@ -44,6 +64,233 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
 
+  // Initialize Fabric.js canvas
+  const initializeFabricCanvas = useCallback(() => {
+    if (!canvasRef.current || !videoRef.current || fabricCanvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = new Canvas(canvasRef.current, {
+      isDrawingMode: false,
+      selection: true,
+      preserveObjectStacking: true,
+    });
+
+    // Set canvas size to match video
+    const updateCanvasSize = () => {
+      if (video.videoWidth && video.videoHeight) {
+        const containerWidth = video.clientWidth;
+        const containerHeight = video.clientHeight;
+
+        canvas.setDimensions({
+          width: containerWidth,
+          height: containerHeight
+        });
+        canvas.renderAll();
+      }
+    };
+
+    video.addEventListener('loadedmetadata', updateCanvasSize);
+    video.addEventListener('resize', updateCanvasSize);
+    updateCanvasSize();
+
+    fabricCanvasRef.current = canvas;
+
+    // Set up drawing properties
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = brushColor;
+      canvas.freeDrawingBrush.width = brushSize;
+    }
+
+    return () => {
+      video.removeEventListener('loadedmetadata', updateCanvasSize);
+      video.removeEventListener('resize', updateCanvasSize);
+      canvas.dispose();
+    };
+  }, [brushColor, brushSize]);
+
+  // Save current annotation
+  const saveAnnotation = useCallback(() => {
+    if (!fabricCanvasRef.current || !videoRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+    const video = videoRef.current;
+    const timestamp = video.currentTime;
+
+    const annotation: Annotation = {
+      id: crypto.randomUUID(),
+      timestamp,
+      canvasData: canvas.toObject(),
+      objects: canvas.getObjects(),
+    };
+
+    setAnnotations(prev => {
+      const filtered = prev.filter(ann => Math.abs(ann.timestamp - timestamp) > 0.5);
+      return [...filtered, annotation];
+    });
+
+    setCurrentAnnotation(annotation);
+  }, []);
+
+  // Load annotation for current timestamp
+  const loadAnnotationForTime = useCallback((timestamp: number) => {
+    if (!fabricCanvasRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+    const annotation = annotations.find(ann =>
+      Math.abs(ann.timestamp - timestamp) < 0.5
+    );
+
+    canvas.clear();
+
+    if (annotation) {
+      canvas.loadFromJSON(annotation.canvasData).then(() => {
+        canvas.renderAll();
+        setCurrentAnnotation(annotation);
+      });
+    } else {
+      setCurrentAnnotation(null);
+    }
+  }, [annotations]);
+
+  // Set up annotation tools
+  const setupAnnotationTool = useCallback((tool: string) => {
+    if (!fabricCanvasRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+
+    canvas.isDrawingMode = false;
+    canvas.selection = true;
+
+    switch (tool) {
+      case 'pen':
+        canvas.isDrawingMode = true;
+        if (canvas.freeDrawingBrush) {
+          canvas.freeDrawingBrush.color = brushColor;
+          canvas.freeDrawingBrush.width = brushSize;
+        }
+        break;
+      case 'rectangle':
+        canvas.defaultCursor = 'crosshair';
+        break;
+      case 'circle':
+        canvas.defaultCursor = 'crosshair';
+        break;
+      case 'text':
+        canvas.defaultCursor = 'text';
+        break;
+      case 'arrow':
+        canvas.defaultCursor = 'crosshair';
+        break;
+    }
+  }, [brushColor, brushSize]);
+
+  // Handle mouse events for shape drawing
+  const handleMouseDown = useCallback((e: any) => {
+    if (!fabricCanvasRef.current || annotationTool === 'pen') return;
+
+    const canvas = fabricCanvasRef.current;
+    const pointer = canvas.getPointer(e.e);
+
+    let shape: FabricObject | null = null;
+
+    switch (annotationTool) {
+      case 'rectangle':
+        shape = new Rect({
+          left: pointer.x,
+          top: pointer.y,
+          width: 0,
+          height: 0,
+          fill: 'transparent',
+          stroke: brushColor,
+          strokeWidth: brushSize,
+        });
+        break;
+      case 'circle':
+        shape = new Circle({
+          left: pointer.x,
+          top: pointer.y,
+          radius: 0,
+          fill: 'transparent',
+          stroke: brushColor,
+          strokeWidth: brushSize,
+        });
+        break;
+      case 'text':
+        const text = prompt('Enter text:');
+        if (text) {
+          shape = new Textbox(text, {
+            left: pointer.x,
+            top: pointer.y,
+            fill: brushColor,
+            fontSize: brushSize * 6,
+          });
+        }
+        break;
+    }
+
+    if (shape) {
+      canvas.add(shape);
+      canvas.setActiveObject(shape);
+      canvas.renderAll();
+    }
+  }, [annotationTool, brushColor, brushSize]);
+
+  // Clear all annotations on current timestamp
+  const clearCurrentAnnotations = useCallback(() => {
+    if (!fabricCanvasRef.current || !videoRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+    const timestamp = videoRef.current.currentTime;
+
+    canvas.clear();
+    setAnnotations(prev =>
+      prev.filter(ann => Math.abs(ann.timestamp - timestamp) > 0.5)
+    );
+    setCurrentAnnotation(null);
+  }, []);
+
+  // Initialize fabric canvas when modal opens
+  useEffect(() => {
+    if (showModal && canvasRef.current && videoRef.current) {
+      const cleanup = initializeFabricCanvas();
+      return cleanup;
+    }
+  }, [showModal, initializeFabricCanvas]);
+
+  // Set up annotation tool when it changes
+  useEffect(() => {
+    if (fabricCanvasRef.current) {
+      setupAnnotationTool(annotationTool);
+    }
+  }, [annotationTool, setupAnnotationTool]);
+
+  // Add mouse event listeners for shape drawing
+  useEffect(() => {
+    if (!fabricCanvasRef.current) return;
+
+    const canvas = fabricCanvasRef.current;
+
+    canvas.on('mouse:down', handleMouseDown);
+
+    return () => {
+      canvas.off('mouse:down', handleMouseDown);
+    };
+  }, [handleMouseDown]);
+
+  // Load annotations when video time changes
+  useEffect(() => {
+    if (!videoRef.current || !showModal) return;
+
+    const video = videoRef.current;
+    const handleTimeUpdate = () => {
+      loadAnnotationForTime(video.currentTime);
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    return () => video.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [showModal, loadAnnotationForTime]);
+
+  // Existing useEffect hooks remain the same...
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
@@ -423,16 +670,115 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center">
           <div className="relative bg-white w-full h-full flex">
-            <div className="flex-1 bg-black">
+            <div className="flex-1 bg-black relative" ref={containerRef}>
               {videoUrl && (
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  controls
-                  autoPlay
-                  className="w-full h-full object-contain"
-                />
+                <>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute top-0 left-0 pointer-events-auto"
+                    style={{
+                      pointerEvents: isAnnotating ? 'auto' : 'none',
+                      zIndex: 10,
+                    }}
+                  />
+                </>
               )}
+
+              {/* Annotation Toolbar */}
+              {isAnnotating && (
+                <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-2 flex items-center gap-2 z-20">
+                  <button
+                    onClick={() => setAnnotationTool('pen')}
+                    className={`p-2 rounded ${annotationTool === 'pen' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    title="Pen Tool"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => setAnnotationTool('rectangle')}
+                    className={`p-2 rounded ${annotationTool === 'rectangle' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    title="Rectangle Tool"
+                  >
+                    ⬜
+                  </button>
+                  <button
+                    onClick={() => setAnnotationTool('circle')}
+                    className={`p-2 rounded ${annotationTool === 'circle' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    title="Circle Tool"
+                  >
+                    ⭕
+                  </button>
+                  <button
+                    onClick={() => setAnnotationTool('text')}
+                    className={`p-2 rounded ${annotationTool === 'text' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    title="Text Tool"
+                  >
+                    T
+                  </button>
+
+                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+                  <input
+                    type="color"
+                    value={brushColor}
+                    onChange={(e) => setBrushColor(e.target.value)}
+                    className="w-8 h-8 rounded border"
+                    title="Color"
+                  />
+
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="w-16"
+                    title="Brush Size"
+                  />
+
+                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+                  <button
+                    onClick={saveAnnotation}
+                    className="px-3 py-1 bg-green-500 text-white rounded text-sm"
+                    title="Save Annotation"
+                  >
+                    Save
+                  </button>
+
+                  <button
+                    onClick={clearCurrentAnnotations}
+                    className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+                    title="Clear Annotations"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {/* Annotation Toggle Button */}
+              <button
+                onClick={() => {
+                  setIsAnnotating(!isAnnotating);
+                  if (fabricCanvasRef.current) {
+                    fabricCanvasRef.current.selection = !isAnnotating;
+                  }
+                }}
+                className={`absolute top-4 right-4 px-4 py-2 rounded-lg font-medium transition-colors z-20 ${
+                  isAnnotating
+                    ? 'bg-red-500 hover:bg-red-600 text-white'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {isAnnotating ? 'Exit Annotation' : 'Annotate'}
+              </button>
             </div>
 
             <div
@@ -456,6 +802,15 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 </button>
               </div>
 
+              {/* Annotation Info */}
+              {currentAnnotation && (
+                <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded">
+                  <div className="text-sm text-blue-800">
+                    📝 Annotation at {formatTime(currentAnnotation.timestamp)}
+                  </div>
+                </div>
+              )}
+
               <div className="flex-1 overflow-y-auto pr-1 min-h-0">
                 {comments.length === 0 ? (
                   <div className="flex items-center justify-center h-32">
@@ -478,7 +833,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                                 onClick={() =>
                                   seekToTimestamp(comment.timestamp)
                                 }
-                                className="  bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
+                                className="bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
                               >
                                 {comment.timestamp}
                               </button>

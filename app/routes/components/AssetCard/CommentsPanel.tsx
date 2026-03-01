@@ -120,33 +120,37 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             </div>
 
             {showCommandPalette && filteredCommands.length > 0 && (
-                <div className="bg-white border border-gray-300 rounded-lg shadow-lg mb-2 min-w-64">
-                    <div className="p-2">
-                        <div className="text-xs text-gray-500 mb-2 px-2">
-                            COMMANDS
+                <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl mb-3 overflow-hidden backdrop-blur-sm">
+                    <div className="px-3 py-2 border-b border-gray-700">
+                        <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            ⚡ Commands
                         </div>
+                    </div>
+                    <div className="p-1">
                         {filteredCommands.map((command, index) => (
                             <div
                                 key={command.id}
-                                className={`flex items-center px-3 py-2 rounded cursor-pointer transition-colors ${index === selectedCommandIndex
-                                    ? "bg-blue-100 text-blue-900"
-                                    : "hover:bg-gray-100"
+                                className={`flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${index === selectedCommandIndex
+                                    ? "bg-blue-600 text-white shadow-md"
+                                    : "text-gray-300 hover:bg-gray-800"
                                     }`}
                                 onClick={() => onExecuteCommand(command)}
                             >
-                                <div className="flex-1">
-                                    <div className="font-medium text-sm">
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm truncate">
                                         {command.label}
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className={`text-xs truncate ${index === selectedCommandIndex ? "text-blue-200" : "text-gray-500"}`}>
                                         {command.description}
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                    <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-400">
-                        ↑↓ to navigate • Enter to select • Esc to dismiss
+                    <div className="border-t border-gray-700 px-3 py-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                        <span><kbd className="px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-400">↑↓</kbd> navigate</span>
+                        <span><kbd className="px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-400">↵</kbd> select</span>
+                        <span><kbd className="px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-400">esc</kbd> dismiss</span>
                     </div>
                 </div>
             )}
@@ -158,12 +162,13 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             {timestampPills.map((pill) => (
                                 <div
                                     key={pill.id}
-                                    className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium border border-blue-200"
+                                    className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-200 shadow-sm"
                                 >
+                                    <span className="text-blue-500">🕐</span>
                                     <span>{pill.text}</span>
                                     <button
                                         onClick={() => onRemovePill(pill.id)}
-                                        className="text-blue-600 hover:text-blue-800 ml-1 focus:outline-none"
+                                        className="text-blue-400 hover:text-red-500 ml-0.5 focus:outline-none transition-colors"
                                         title="Remove timestamp"
                                     >
                                         ×
@@ -174,6 +179,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     )}
 
                     <div className="relative">
+                        <div className="text-[10px] text-gray-400 mb-1 pl-1">
+                            Type <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">$</kbd> for commands
+                        </div>
                         <Editor
                             className="w-full border rounded-md"
                             theme="light"
@@ -184,7 +192,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             onMount={onEditorMount}
                             options={{
                                 placeholder:
-                                    "Write Your comment... (Press $ to open commands)",
+                                    "Write your comment...",
                                 fontSize: 14,
                                 minimap: { enabled: false },
                                 contextmenu: false,
@@ -204,7 +212,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     </div>
 
                     <button
-                        className="bg-green-600 text-white px-3 py-1 rounded w-full mt-2"
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg w-full mt-2 font-medium text-sm transition-colors shadow-sm"
                         onClick={onSubmit}
                     >
                         Post Comment

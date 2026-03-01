@@ -218,6 +218,9 @@ export function useAnnotations({
         if (!fabricCanvasRef.current || annotationTool === 'pen') return;
         if (isDrawingRef.current) return;
 
+        // If user clicked on an existing object, let Fabric.js handle move/resize
+        if (e.target) return;
+
         const canvas = fabricCanvasRef.current;
         const pointer = canvas.getScenePoint(e.e);
 

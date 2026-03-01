@@ -95,14 +95,14 @@ export function useCommentEditor({
     const commands: Command[] = [
         {
             id: "current-time",
-            label: "Current Time Frame",
-            description: "Insert current video timestamp",
+            label: "⏱ Current Timestamp",
+            description: "Insert the current video time as a clickable timestamp",
             action: insertCurrentTimeFrame,
         },
         {
             id: "time-range",
-            label: "Time Range",
-            description: "Insert time range (±30 seconds)",
+            label: "🔀 Time Range",
+            description: "Insert a 30-second range starting from current time",
             action: insertTimeRange,
         },
     ];
@@ -206,15 +206,18 @@ export function useCommentEditor({
         }
     };
 
+    const parseTimestamp = (timestamp: string): number => {
+        const parts = timestamp.split(":").map(Number);
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        return parts[0] || 0;
+    };
+
     const seekToTimestamp = (ts: string) => {
-        const parts = ts.split(":").map(Number);
-        const seconds =
-            parts.length === 3
-                ? parts[0] * 3600 + parts[1] * 60 + parts[2]
-                : parts.length === 2
-                    ? parts[0] * 60 + parts[1]
-                    : parts[0];
-        if (videoRef.current) {
+        // Handle range format like "00:07-00:37" — seek to start time
+        const startTs = ts.includes("-") ? ts.split("-")[0] : ts;
+        const seconds = parseTimestamp(startTs.trim());
+        if (videoRef.current && !isNaN(seconds)) {
             videoRef.current.currentTime = seconds;
             videoRef.current.play();
         }

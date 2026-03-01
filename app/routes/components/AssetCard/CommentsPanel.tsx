@@ -1,0 +1,218 @@
+import React from "react";
+import { Editor } from "@monaco-editor/react";
+import type { Comment, Annotation } from "../../types";
+import { formatTime, type Command, type TimestampPill } from "./utils";
+
+interface CommentsPanelProps {
+    comments: Comment[];
+    isAnnotating: boolean;
+    currentAnnotation: Annotation | null;
+    showCommandPalette: boolean;
+    filteredCommands: Command[];
+    selectedCommandIndex: number;
+    timestampPills: TimestampPill[];
+    commentText: string;
+    sidebarWidth: number;
+    onClose: () => void;
+    onResizeStart: (e: React.MouseEvent) => void;
+    onSeekToTimestamp: (ts: string) => void;
+    onExecuteCommand: (command: Command) => void;
+    onRemovePill: (pillId: string) => void;
+    onEditorChange: (value: string | undefined) => void;
+    onEditorMount: (editor: any, monaco: any) => void;
+    onSubmit: () => void;
+}
+
+const CommentsPanel: React.FC<CommentsPanelProps> = ({
+    comments,
+    isAnnotating,
+    currentAnnotation,
+    showCommandPalette,
+    filteredCommands,
+    selectedCommandIndex,
+    timestampPills,
+    commentText,
+    sidebarWidth,
+    onClose,
+    onResizeStart,
+    onSeekToTimestamp,
+    onExecuteCommand,
+    onRemovePill,
+    onEditorChange,
+    onEditorMount,
+    onSubmit,
+}) => {
+    return (
+        <div
+            className="bg-white border-l border-gray-200 p-4 flex flex-col min-h-0 relative"
+            style={{ width: `${sidebarWidth}px` }}
+        >
+            <div
+                className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize z-10 transition-colors"
+                onMouseDown={onResizeStart}
+            />
+
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 className="text-lg font-semibold">
+                    Comments ({comments.length})
+                </h2>
+                <button
+                    className="text-sm text-red-500 hover:underline"
+                    onClick={onClose}
+                >
+                    Close
+                </button>
+            </div>
+
+            {/* Annotation Info */}
+            {isAnnotating && currentAnnotation && (
+                <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded">
+                    <div className="text-sm text-blue-800">
+                        📝 Annotation at {formatTime(currentAnnotation.timestamp)}
+                        {currentAnnotation.duration && (
+                            <span className="ml-2 text-blue-600">
+                                (visible for {currentAnnotation.duration}s)
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto pr-1 min-h-0">
+                {comments.length === 0 ? (
+                    <div className="flex items-center justify-center h-32">
+                        <p className="text-gray-500">No comments yet.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {comments.map((comment) => (
+                            <div
+                                key={comment.id}
+                                className="border border-gray-200 p-3 rounded-md"
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-semibold text-gray-900 text-sm">
+                                            {comment.name}
+                                        </span>
+                                        {comment.timestamp && (
+                                            <button
+                                                onClick={() =>
+                                                    onSeekToTimestamp(comment.timestamp)
+                                                }
+                                                className="bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
+                                            >
+                                                {comment.timestamp}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-gray-400">
+                                        {new Date(comment.created).toLocaleString()}
+                                    </span>
+                                </div>
+                                <p className="text-gray-700 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
+                                    {comment.text}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {showCommandPalette && filteredCommands.length > 0 && (
+                <div className="bg-white border border-gray-300 rounded-lg shadow-lg mb-2 min-w-64">
+                    <div className="p-2">
+                        <div className="text-xs text-gray-500 mb-2 px-2">
+                            COMMANDS
+                        </div>
+                        {filteredCommands.map((command, index) => (
+                            <div
+                                key={command.id}
+                                className={`flex items-center px-3 py-2 rounded cursor-pointer transition-colors ${index === selectedCommandIndex
+                                    ? "bg-blue-100 text-blue-900"
+                                    : "hover:bg-gray-100"
+                                    }`}
+                                onClick={() => onExecuteCommand(command)}
+                            >
+                                <div className="flex-1">
+                                    <div className="font-medium text-sm">
+                                        {command.label}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {command.description}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-400">
+                        ↑↓ to navigate • Enter to select • Esc to dismiss
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-2 relative">
+                <div className="border-t pt-4">
+                    {timestampPills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {timestampPills.map((pill) => (
+                                <div
+                                    key={pill.id}
+                                    className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium border border-blue-200"
+                                >
+                                    <span>{pill.text}</span>
+                                    <button
+                                        onClick={() => onRemovePill(pill.id)}
+                                        className="text-blue-600 hover:text-blue-800 ml-1 focus:outline-none"
+                                        title="Remove timestamp"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="relative">
+                        <Editor
+                            className="w-full border rounded-md"
+                            theme="light"
+                            height="120px"
+                            defaultLanguage="markdown"
+                            value={commentText}
+                            onChange={onEditorChange}
+                            onMount={onEditorMount}
+                            options={{
+                                placeholder:
+                                    "Write Your comment... (Press $ to open commands)",
+                                fontSize: 14,
+                                minimap: { enabled: false },
+                                contextmenu: false,
+                                guides: {
+                                    indentation: false,
+                                    bracketPairs: false,
+                                },
+                                lineDecorationsWidth: 0,
+                                lineNumbersMinChars: 0,
+                                lineNumbers: "off",
+                                glyphMargin: false,
+                                scrollbar: { vertical: "auto" },
+                                wordWrap: "on",
+                                folding: false,
+                            }}
+                        />
+                    </div>
+
+                    <button
+                        className="bg-green-600 text-white px-3 py-1 rounded w-full mt-2"
+                        onClick={onSubmit}
+                    >
+                        Post Comment
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default CommentsPanel;

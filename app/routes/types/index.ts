@@ -60,6 +60,17 @@ export interface LoaderData {
   revisionId: string;
 }
 
+export interface Annotation {
+  id: string;
+  revisionId: string;
+  timestamp: number;
+  duration?: number;
+  canvasData: any;
+  createdBy?: string;
+  created?: string;
+  updated?: string;
+}
+
 export interface AssetCardProps {
   revision: AssetRevision;
 }

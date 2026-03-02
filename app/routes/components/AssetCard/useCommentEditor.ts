@@ -238,6 +238,50 @@ export function useCommentEditor({
         }
     }, [revision.id, pb]);
 
+    // Realtime subscription for comments
+    useEffect(() => {
+        if (!revision.id || !showModal) return;
+
+        let unsubscribe: (() => Promise<void>) | null = null;
+
+        pb.collection("comments")
+            .subscribe("*", (data: any) => {
+                const record = data.record;
+                // Only process events for this revision
+                if (record.revisionId !== revision.id) return;
+
+                switch (data.action) {
+                    case "create":
+                        setComments((prev) => {
+                            // Deduplicate: skip if already in state (from local submit)
+                            if (prev.some((c) => c.id === record.id)) return prev;
+                            return [...prev, record as unknown as Comment];
+                        });
+                        break;
+                    case "update":
+                        setComments((prev) =>
+                            prev.map((c) => (c.id === record.id ? (record as unknown as Comment) : c))
+                        );
+                        break;
+                    case "delete":
+                        setComments((prev) => prev.filter((c) => c.id !== record.id));
+                        break;
+                }
+            })
+            .then((unsub: () => Promise<void>) => {
+                unsubscribe = unsub;
+            })
+            .catch((err: any) => {
+                console.error("Error subscribing to comments:", err);
+            });
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [revision.id, showModal, pb]);
+
     // Reset command index when filtered commands change
     useEffect(() => {
         setSelectedCommandIndex(0);

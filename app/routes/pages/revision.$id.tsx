@@ -6,18 +6,19 @@ import {
   useActionData,
   useLoaderData,
   useNavigation,
-  redirect,
 } from "react-router-dom";
 import PocketBase from "pocketbase";
 import type { LoaderData, Revision } from "../types";
+import { useCommentEditor } from "../components/AssetCard/useCommentEditor";
+import { useAnnotations } from "../components/AssetCard/useAnnotations";
+import CommentsPanel from "../components/AssetCard/CommentsPanel";
+import AnnotationToolbar from "../components/AssetCard/AnnotationToolbar";
 
 const pb = new PocketBase("http://127.0.0.1:8090");
+
 interface ActionData {
   errors?: {
     form?: string;
-    name?: string;
-    timestamp?: string;
-    text?: string;
   };
   isAuthorized?: boolean;
   userEmail?: string;
@@ -49,13 +50,8 @@ export async function loader({
     const revision = await pb
       .collection("assets_revision")
       .getOne<Revision>(revisionId, { requestKey: null });
-    const comments = await pb.collection("comments").getFullList<Comment>({
-      filter: `revisionId = "${revisionId}"`,
-      sort: "created",
-      requestKey: null,
-    });
 
-    return { revision, comments, revisionId };
+    return { revision, comments: [], revisionId };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       console.log("Fetch aborted, likely due to HMR. Ignoring.");
@@ -67,14 +63,12 @@ export async function loader({
 
 export async function action({
   request,
-  params,
 }: {
   request: Request;
   params: { id: string };
 }) {
   const formData = await request.formData();
   const submissionType = formData.get("_action");
-  const revisionId = params.id;
 
   if (submissionType === "authorize") {
     const email = formData.get("email") as string;
@@ -111,47 +105,17 @@ export async function action({
     }
   }
 
-  if (submissionType === "createComment") {
-    const newComment = {
-      name: formData.get("name") as string,
-      timestamp: formData.get("timestamp") as string,
-      text: formData.get("text") as string,
-      revisionId: revisionId,
-    };
-
-    const errors: ActionData["errors"] = {};
-    if (!newComment.name.trim()) errors.name = "Name is required.";
-    if (!newComment.text.trim()) errors.text = "Comment text cannot be empty.";
-    if (newComment.timestamp && !/^\d{2}:\d{2}$/.test(newComment.timestamp)) {
-      errors.timestamp = "Invalid timestamp format.";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      return { errors, isAuthorized: true, userEmail: newComment.name };
-    }
-
-    try {
-      await pb.collection("comments").create(newComment, { requestKey: null });
-      return redirect(request.url);
-    } catch (error) {
-      console.error("Action Error - Failed to create comment:", error);
-      return {
-        errors: { form: "Failed to post comment. Please try again." },
-        isAuthorized: true,
-        userEmail: newComment.name,
-      };
-    }
-  }
-
   return { errors: { form: "Invalid form submission." } };
 }
+
 export default function RevisionViewer() {
-  const { revision, comments } = useLoaderData() as LoaderData;
+  const { revision } = useLoaderData() as LoaderData;
   const actionData = useActionData() as ActionData | undefined;
   const navigation = useNavigation();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [isAuthorized, setIsAuthorized] = useState(() => {
     if (typeof window !== "undefined") {
@@ -166,11 +130,6 @@ export default function RevisionViewer() {
     return null;
   });
 
-  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(
-    null
-  );
-  const [commentText, setCommentText] = useState("");
-
   useEffect(() => {
     if (actionData?.isAuthorized && actionData.userEmail) {
       const name = actionData.userEmail.split("@")[0];
@@ -181,62 +140,64 @@ export default function RevisionViewer() {
     }
   }, [actionData]);
 
+  // Reuse the same annotation hook from AssetCard
+  const {
+    isAnnotating,
+    annotationTool,
+    setAnnotationTool,
+    currentAnnotation,
+    brushColor,
+    setBrushColor,
+    brushSize,
+    setBrushSize,
+    annotationDuration,
+    setAnnotationDuration,
+    saveAnnotation,
+    clearCurrentAnnotations,
+    fetchAnnotations,
+    toggleAnnotating,
+  } = useAnnotations({
+    pb,
+    revision,
+    user: reviewerName ? { name: reviewerName, email: reviewerName } : null,
+    videoRef,
+    canvasRef,
+    containerRef,
+    showModal: isAuthorized,
+  });
+
+  // Reuse the same comment editor hook from AssetCard
+  const {
+    comments,
+    commentText,
+    timestampPills,
+    showCommandPalette,
+    filteredCommands,
+    selectedCommandIndex,
+    timeRangeDuration,
+    setTimeRangeDuration,
+    handleEditorChange,
+    handleEditorMount,
+    handleSubmit,
+    executeCommand,
+    removePill,
+    seekToTimestamp,
+    fetchComments,
+  } = useCommentEditor({
+    pb,
+    revision,
+    user: reviewerName ? { name: reviewerName, email: reviewerName } : null,
+    videoRef,
+    showModal: isAuthorized,
+  });
+
+  // Fetch comments and annotations when authorized
   useEffect(() => {
-    const formData = navigation.formData;
-    const isSuccessfulComment =
-      navigation.state === "idle" &&
-      formData &&
-      formData.get("_action") === "createComment" &&
-      !actionData?.errors;
-
-    if (isSuccessfulComment) {
-      setCommentText("");
-      setCapturedTimestamp(null);
+    if (isAuthorized && revision.id) {
+      fetchComments();
+      fetchAnnotations();
     }
-  }, [navigation, actionData]);
-
-  const formatTime = (timeInSeconds: number) => {
-    const minutes = Math.floor(timeInSeconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const seconds = Math.floor(timeInSeconds % 60)
-      .toString()
-      .padStart(2, "0");
-    return `${minutes}:${seconds}`;
-  };
-
-  const handleCommentKeyDown = (
-    e: React.KeyboardEvent<HTMLTextAreaElement>
-  ) => {
-    if (e.key === "#") {
-      e.preventDefault();
-      if (videoRef.current) {
-        const currentTime = videoRef.current.currentTime;
-        const formattedTime = formatTime(currentTime);
-        setCapturedTimestamp(formattedTime);
-        const textarea = e.currentTarget;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newText =
-          commentText.substring(0, start) +
-          `@${formattedTime} ` +
-          commentText.substring(end);
-        setCommentText(newText);
-      }
-    }
-  };
-
-  const seekToTimestamp = (ts: string) => {
-    const parts = ts.split(":").map(Number);
-    const seconds = parts.reduce(
-      (acc, val, index) => acc + val * Math.pow(60, parts.length - 1 - index),
-      0
-    );
-    if (videoRef.current) {
-      videoRef.current.currentTime = seconds;
-      videoRef.current.play().catch(console.error);
-    }
-  };
+  }, [isAuthorized, revision.id]);
 
   if (!isAuthorized) {
     return (
@@ -296,116 +257,79 @@ export default function RevisionViewer() {
           <div className="lg:w-2/3">
             {revision.video && (
               <div className="bg-white rounded-lg shadow-sm p-2 sticky top-6">
-                <video
-                  ref={videoRef}
-                  src={pb.files.getURL(revision, revision.video)}
-                  controls
-                  className="w-full rounded-md"
-                />
+                <div className="relative" ref={containerRef}>
+                  <video
+                    ref={videoRef}
+                    src={pb.files.getURL(revision, revision.video)}
+                    controls
+                    className="w-full rounded-md"
+                    style={{ position: 'relative', zIndex: 1 }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      zIndex: 10,
+                      pointerEvents: isAnnotating ? 'auto' : 'none',
+                    }}
+                  >
+                    <canvas ref={canvasRef} />
+                  </div>
+
+                  {/* Annotation Toolbar */}
+                  {isAnnotating && (
+                    <AnnotationToolbar
+                      annotationTool={annotationTool}
+                      setAnnotationTool={setAnnotationTool}
+                      brushColor={brushColor}
+                      setBrushColor={setBrushColor}
+                      brushSize={brushSize}
+                      setBrushSize={setBrushSize}
+                      annotationDuration={annotationDuration}
+                      setAnnotationDuration={setAnnotationDuration}
+                      onSave={saveAnnotation}
+                      onClear={clearCurrentAnnotations}
+                    />
+                  )}
+
+                  {/* Annotation Toggle Button */}
+                  <button
+                    onClick={toggleAnnotating}
+                    className={`absolute top-4 right-4 px-4 py-2 rounded-lg font-medium transition-colors z-20 ${isAnnotating
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                  >
+                    {isAnnotating ? 'Exit Annotation' : 'Annotate'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="lg:w-1/3 space-y-6 flex flex-col mt-6 lg:mt-0">
-            <div className="bg-white rounded-lg shadow-sm p-6 flex-grow">
-              <h3 className="text-lg font-semibold mb-4">
-                Comments ({comments.length})
-              </h3>
-              {comments.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">
-                  No comments yet.
-                </p>
-              ) : (
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                  {comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="border border-gray-200 p-3 rounded-md"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-gray-900 text-sm">
-                            {comment.name}
-                          </span>
-                          {comment.timestamp && (
-                            <button
-                              onClick={() => seekToTimestamp(comment.timestamp)}
-                              className="text-blue-600 hover:text-blue-800 underline font-mono text-sm"
-                            >
-                              {comment.timestamp}
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-400">
-                          {new Date(comment.created).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 whitespace-pre-wrap text-sm">
-                        {comment.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Comment</h3>
-              <Form method="post">
-                <input type="hidden" name="_action" value="createComment" />
-                <input
-                  type="hidden"
-                  name="timestamp"
-                  value={capturedTimestamp || ""}
-                />
-                <div className="space-y-4">
-                  <div>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required
-                      value={reviewerName || ""}
-                      readOnly
-                      className="border border-gray-300 px-3 py-2 rounded-md w-full bg-gray-100 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="text"
-                      className="block text-sm font-medium text-gray-600 mb-1"
-                    >
-                      Comment (Press # to tag time)
-                    </label>
-                    <textarea
-                      ref={textareaRef}
-                      id="text"
-                      name="text"
-                      placeholder="Write your comment..."
-                      rows={4}
-                      required
-                      className="w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      onKeyDown={handleCommentKeyDown}
-                    />
-                    {actionData?.errors?.text && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {actionData.errors.text}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={navigation.state === "submitting"}
-                  className="mt-4 w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors font-semibold"
-                >
-                  {navigation.state === "submitting"
-                    ? "Submitting..."
-                    : "Submit"}
-                </button>
-              </Form>
+          <div className="lg:w-1/3 mt-6 lg:mt-0">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <CommentsPanel
+                comments={comments}
+                isAnnotating={isAnnotating}
+                currentAnnotation={currentAnnotation}
+                showCommandPalette={showCommandPalette}
+                filteredCommands={filteredCommands}
+                selectedCommandIndex={selectedCommandIndex}
+                timestampPills={timestampPills}
+                commentText={commentText}
+                timeRangeDuration={timeRangeDuration}
+                onTimeRangeDurationChange={setTimeRangeDuration}
+                onSeekToTimestamp={seekToTimestamp}
+                onExecuteCommand={executeCommand}
+                onRemovePill={removePill}
+                onEditorChange={handleEditorChange}
+                onEditorMount={handleEditorMount}
+                onSubmit={handleSubmit}
+              />
             </div>
           </div>
         </div>

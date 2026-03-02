@@ -5,16 +5,18 @@ import { formatTime, type Command, type TimestampPill } from "./utils";
 
 interface CommentsPanelProps {
     comments: Comment[];
-    isAnnotating: boolean;
-    currentAnnotation: Annotation | null;
+    isAnnotating?: boolean;
+    currentAnnotation?: Annotation | null;
     showCommandPalette: boolean;
     filteredCommands: Command[];
     selectedCommandIndex: number;
     timestampPills: TimestampPill[];
     commentText: string;
-    sidebarWidth: number;
-    onClose: () => void;
-    onResizeStart: (e: React.MouseEvent) => void;
+    sidebarWidth?: number;
+    timeRangeDuration: number;
+    onTimeRangeDurationChange: (duration: number) => void;
+    onClose?: () => void;
+    onResizeStart?: (e: React.MouseEvent) => void;
     onSeekToTimestamp: (ts: string) => void;
     onExecuteCommand: (command: Command) => void;
     onRemovePill: (pillId: string) => void;
@@ -33,6 +35,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     timestampPills,
     commentText,
     sidebarWidth,
+    timeRangeDuration,
+    onTimeRangeDurationChange,
     onClose,
     onResizeStart,
     onSeekToTimestamp,
@@ -45,23 +49,27 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     return (
         <div
             className="bg-white border-l border-gray-200 p-4 flex flex-col min-h-0 relative"
-            style={{ width: `${sidebarWidth}px` }}
+            style={sidebarWidth ? { width: `${sidebarWidth}px` } : { width: '100%' }}
         >
-            <div
-                className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize z-10 transition-colors"
-                onMouseDown={onResizeStart}
-            />
+            {onResizeStart && (
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize z-10 transition-colors"
+                    onMouseDown={onResizeStart}
+                />
+            )}
 
             <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h2 className="text-lg font-semibold">
                     Comments ({comments.length})
                 </h2>
-                <button
-                    className="text-sm text-red-500 hover:underline"
-                    onClick={onClose}
-                >
-                    Close
-                </button>
+                {onClose && (
+                    <button
+                        className="text-sm text-red-500 hover:underline"
+                        onClick={onClose}
+                    >
+                        Close
+                    </button>
+                )}
             </div>
 
             {/* Annotation Info */}
@@ -182,6 +190,40 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                         <div className="text-[10px] text-gray-400 mb-1 pl-1">
                             Type <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">$</kbd> for commands
                         </div>
+
+                        {/* Time Range Duration Selector */}
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Range:</span>
+                            {[10, 30, 60, 120].map((d) => (
+                                <button
+                                    key={d}
+                                    onClick={() => onTimeRangeDurationChange(d)}
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all duration-150 ${timeRangeDuration === d
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                                        : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
+                                        }`}
+                                >
+                                    {d}s
+                                </button>
+                            ))}
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={600}
+                                    value={timeRangeDuration}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value, 10);
+                                        if (!isNaN(val) && val >= 1 && val <= 600) {
+                                            onTimeRangeDurationChange(val);
+                                        }
+                                    }}
+                                    className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                />
+                                <span className="text-[10px] text-gray-400">sec</span>
+                            </div>
+                        </div>
+
                         <Editor
                             className="w-full border rounded-md"
                             theme="light"

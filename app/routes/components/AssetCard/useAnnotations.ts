@@ -421,6 +421,49 @@ export function useAnnotations({
         }
     }, [revision.id, pb]);
 
+    // Realtime subscription for annotations
+    useEffect(() => {
+        if (!revision.id || !showModal) return;
+
+        let unsubscribe: (() => Promise<void>) | null = null;
+
+        pb.collection("annotations")
+            .subscribe("*", (data: any) => {
+                const record = data.record;
+                // Only process events for this revision
+                if (record.revisionId !== revision.id) return;
+
+                switch (data.action) {
+                    case "create":
+                        setAnnotations((prev: any[]) => {
+                            if (prev.some((a: any) => a.id === record.id)) return prev;
+                            return [...prev, record];
+                        });
+                        break;
+                    case "update":
+                        setAnnotations((prev: any[]) =>
+                            prev.map((a: any) => (a.id === record.id ? record : a))
+                        );
+                        break;
+                    case "delete":
+                        setAnnotations((prev: any[]) => prev.filter((a: any) => a.id !== record.id));
+                        break;
+                }
+            })
+            .then((unsub: () => Promise<void>) => {
+                unsubscribe = unsub;
+            })
+            .catch((err: any) => {
+                console.error("Error subscribing to annotations:", err);
+            });
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [revision.id, showModal, pb]);
+
     // Toggle annotation mode
     const toggleAnnotating = useCallback(() => {
         const entering = !isAnnotating;

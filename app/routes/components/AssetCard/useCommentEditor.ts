@@ -29,6 +29,7 @@ export function useCommentEditor({
     const [commandStartPos, setCommandStartPos] = useState(0);
     const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
     const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+    const [timeRangeDuration, setTimeRangeDuration] = useState(30);
 
     const insertCurrentTimeFrame = () => {
         if (videoRef.current && editorRef.current && monacoInstance) {
@@ -64,7 +65,7 @@ export function useCommentEditor({
         if (videoRef.current && editorRef.current && monacoInstance) {
             const currentTime = videoRef.current.currentTime;
             const startTime = Math.max(0, currentTime);
-            const endTime = currentTime + 30;
+            const endTime = currentTime + timeRangeDuration;
 
             const startFormatted = formatTime(startTime);
             const endFormatted = formatTime(endTime);
@@ -102,7 +103,7 @@ export function useCommentEditor({
         {
             id: "time-range",
             label: "🔀 Time Range",
-            description: "Insert a 30-second range starting from current time",
+            description: `Insert a ${timeRangeDuration}-second range starting from current time`,
             action: insertTimeRange,
         },
     ];
@@ -323,6 +324,8 @@ export function useCommentEditor({
         showCommandPalette,
         filteredCommands,
         selectedCommandIndex,
+        timeRangeDuration,
+        setTimeRangeDuration,
         handleEditorChange,
         handleEditorMount,
         handleSubmit,

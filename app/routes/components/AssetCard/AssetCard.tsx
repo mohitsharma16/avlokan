@@ -54,6 +54,8 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     showCommandPalette,
     filteredCommands,
     selectedCommandIndex,
+    timeRangeDuration,
+    setTimeRangeDuration,
     handleEditorChange,
     handleEditorMount,
     handleSubmit,
@@ -233,6 +235,8 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               timestampPills={timestampPills}
               commentText={commentText}
               sidebarWidth={sidebarWidth}
+              timeRangeDuration={timeRangeDuration}
+              onTimeRangeDurationChange={setTimeRangeDuration}
               onClose={() => setShowModal(false)}
               onResizeStart={handleResizeStart}
               onSeekToTimestamp={seekToTimestamp}

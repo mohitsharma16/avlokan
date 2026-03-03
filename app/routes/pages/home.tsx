@@ -6,6 +6,7 @@ import type { AssetRevision } from "../types";
 import Header from "../components/Header/Header";
 import RevisionForm from "../components/RevisionForm/RevisionForm";
 import RevisionCompare from "../components/RevisionCompare/RevisionCompare";
+import AssetTimeline from "../components/AssetTimeline/AssetTimeline";
 import { useAuth } from "../contexts/AuthContext";
 
 import ReactMarkdown from "react-markdown";
@@ -70,6 +71,7 @@ const Home: React.FC = () => {
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   // Modal for full client description
   const [openClientModal, setOpenClientModal] = useState<RecordModel | null>(
@@ -333,21 +335,32 @@ const Home: React.FC = () => {
           {!loading && revisions.length > 0 && (
             <>
               {/* Compare toggle + header */}
-              {revisions.length >= 2 && (
+              {revisions.length >= 1 && (
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-[#2b1f18]">Revisions</h2>
-                  <button
-                    onClick={() => {
-                      setCompareMode(!compareMode);
-                      setSelectedForCompare([]);
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${compareMode
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-bold text-[#2b1f18]">Revisions</h2>
+                    <button
+                      onClick={() => setShowTimeline(true)}
+                      className="px-3 py-1 rounded-full border-2 border-[#6B4F3A] text-[#6B4F3A] text-xs font-bold hover:bg-[#6B4F3A] hover:text-white transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      <span>🕒</span>
+                      <span>View Timeline</span>
+                    </button>
+                  </div>
+                  {revisions.length >= 2 && (
+                    <button
+                      onClick={() => {
+                        setCompareMode(!compareMode);
+                        setSelectedForCompare([]);
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${compareMode
                         ? "bg-red-500 text-white hover:bg-red-600"
                         : "bg-[#6B4F3A] text-white hover:opacity-90"
-                      }`}
-                  >
-                    {compareMode ? "Cancel Compare" : "Compare Revisions"}
-                  </button>
+                        }`}
+                    >
+                      {compareMode ? "Cancel Compare" : "Compare Revisions"}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -374,13 +387,13 @@ const Home: React.FC = () => {
                             });
                           }}
                           className={`absolute inset-0 z-10 rounded-2xl cursor-pointer border-4 transition-colors ${isSelectedForCompare
-                              ? "border-blue-500 bg-blue-500/10"
-                              : "border-transparent hover:border-blue-300"
+                            ? "border-blue-500 bg-blue-500/10"
+                            : "border-transparent hover:border-blue-300"
                             }`}
                         >
                           <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelectedForCompare
-                              ? "bg-blue-500 border-blue-500"
-                              : "bg-white border-gray-400"
+                            ? "bg-blue-500 border-blue-500"
+                            : "bg-white border-gray-400"
                             }`}>
                             {isSelectedForCompare && (
                               <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -484,6 +497,15 @@ const Home: React.FC = () => {
           />
         );
       })()}
+
+      {/* Asset Timeline Modal */}
+      {showTimeline && selectedAsset && (
+        <AssetTimeline
+          asset={assets.find(a => a.id === selectedAsset)}
+          revisions={revisions}
+          onClose={() => setShowTimeline(false)}
+        />
+      )}
     </div>
   );
 };

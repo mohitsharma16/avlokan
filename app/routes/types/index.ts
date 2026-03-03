@@ -74,3 +74,14 @@ export interface Annotation {
 export interface AssetCardProps {
   revision: AssetRevision;
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: "comment_added" | "annotation_added" | "revision_uploaded";
+  message: string;
+  revisionId: string;
+  sourceUser: string;
+  read: boolean;
+  created: string;
+}

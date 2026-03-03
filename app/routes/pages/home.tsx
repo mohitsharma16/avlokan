@@ -5,6 +5,7 @@ import AssetCard from "../components/AssetCard/AssetCard";
 import type { AssetRevision } from "../types";
 import Header from "../components/Header/Header";
 import RevisionForm from "../components/RevisionForm/RevisionForm";
+import RevisionCompare from "../components/RevisionCompare/RevisionCompare";
 import { useAuth } from "../contexts/AuthContext";
 
 import ReactMarkdown from "react-markdown";
@@ -64,6 +65,11 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // Compare mode
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
 
   // Modal for full client description
   const [openClientModal, setOpenClientModal] = useState<RecordModel | null>(
@@ -191,10 +197,9 @@ const Home: React.FC = () => {
                   key={client.id}
                   onClick={() => setSelectedClient(client.id)}
                   className={`flex items-start gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2
-                    ${
-                      isSelected
-                        ? "border-[#8B5E3C] bg-[#d4b785] shadow-lg"
-                        : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg"
+                    ${isSelected
+                      ? "border-[#8B5E3C] bg-[#d4b785] shadow-lg"
+                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg"
                     }`}
                 >
                   {/* Left: avatar or initials */}
@@ -219,7 +224,7 @@ const Home: React.FC = () => {
                         </h3>
                         <div
                           className="mt-1 text-sm text-[#3b2f2b] line-clamp-3 overflow-hidden"
-                          // We render a text preview (not HTML/MD) for consistent clamping
+                        // We render a text preview (not HTML/MD) for consistent clamping
                         >
                           {previewText || (
                             <span className="text-gray-500">
@@ -260,10 +265,9 @@ const Home: React.FC = () => {
                   key={project.id}
                   onClick={() => setSelectedProject(project.id)}
                   className={`flex-shrink-0 w-60 p-4 rounded-2xl transition border-2
-                    ${
-                      selectedProject === project.id
-                        ? "border-[#8B5E3C] bg-[#d4b785] shadow"
-                        : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg"
+                    ${selectedProject === project.id
+                      ? "border-[#8B5E3C] bg-[#d4b785] shadow"
+                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg"
                     }`}
                 >
                   <h3 className="font-semibold text-[#2b1f18]">
@@ -291,10 +295,9 @@ const Home: React.FC = () => {
                   key={asset.id}
                   onClick={() => setSelectedAsset(asset.id)}
                   className={`px-4 py-2 rounded-full border-2 shadow-sm transition
-                    ${
-                      selectedAsset === asset.id
-                        ? "bg-[#6B4F3A] border-[#6B4F3A] text-white"
-                        : "bg-[#fff7ed] border-[#6B4F3A] text-[#2b1f18] hover:shadow-lg"
+                    ${selectedAsset === asset.id
+                      ? "bg-[#6B4F3A] border-[#6B4F3A] text-white"
+                      : "bg-[#fff7ed] border-[#6B4F3A] text-[#2b1f18] hover:shadow-lg"
                     }`}
                 >
                   {asset.name}
@@ -329,11 +332,82 @@ const Home: React.FC = () => {
 
           {!loading && revisions.length > 0 && (
             <>
+              {/* Compare toggle + header */}
+              {revisions.length >= 2 && (
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-[#2b1f18]">Revisions</h2>
+                  <button
+                    onClick={() => {
+                      setCompareMode(!compareMode);
+                      setSelectedForCompare([]);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${compareMode
+                        ? "bg-red-500 text-white hover:bg-red-600"
+                        : "bg-[#6B4F3A] text-white hover:opacity-90"
+                      }`}
+                  >
+                    {compareMode ? "Cancel Compare" : "Compare Revisions"}
+                  </button>
+                </div>
+              )}
+
+              {compareMode && (
+                <p className="text-sm text-[#3b2f2b] mb-4">
+                  Select exactly 2 revisions to compare ({selectedForCompare.length}/2 selected)
+                </p>
+              )}
+
               <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {revisions.map((revision) => (
-                  <AssetCard key={revision.id} revision={revision} />
-                ))}
+                {revisions.map((revision) => {
+                  const isSelectedForCompare = selectedForCompare.includes(revision.id);
+                  return (
+                    <div key={revision.id} className="relative">
+                      {compareMode && (
+                        <div
+                          onClick={() => {
+                            setSelectedForCompare((prev) => {
+                              if (prev.includes(revision.id)) {
+                                return prev.filter((id) => id !== revision.id);
+                              }
+                              if (prev.length >= 2) return prev;
+                              return [...prev, revision.id];
+                            });
+                          }}
+                          className={`absolute inset-0 z-10 rounded-2xl cursor-pointer border-4 transition-colors ${isSelectedForCompare
+                              ? "border-blue-500 bg-blue-500/10"
+                              : "border-transparent hover:border-blue-300"
+                            }`}
+                        >
+                          <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelectedForCompare
+                              ? "bg-blue-500 border-blue-500"
+                              : "bg-white border-gray-400"
+                            }`}>
+                            {isSelectedForCompare && (
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      <AssetCard revision={revision} />
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Compare floating button */}
+              {compareMode && selectedForCompare.length === 2 && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40">
+                  <button
+                    onClick={() => setShowComparison(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full shadow-xl text-lg font-semibold transition-transform hover:scale-105"
+                  >
+                    Compare Selected
+                  </button>
+                </div>
+              )}
+
               <div className="text-center mt-6">
                 <button
                   onClick={() => setIsFormOpen(true)}
@@ -390,6 +464,26 @@ const Home: React.FC = () => {
           onSuccess={handleUploadSuccess}
         />
       )}
+
+      {/* Revision Comparison Modal */}
+      {showComparison && selectedForCompare.length === 2 && (() => {
+        const revA = revisions.find((r) => r.id === selectedForCompare[0]);
+        const revB = revisions.find((r) => r.id === selectedForCompare[1]);
+        if (!revA || !revB) return null;
+        return (
+          <RevisionCompare
+            revisionA={revA}
+            revisionB={revB}
+            videoUrlA={revA.video ? pb.files.getURL(revA, revA.video) : ""}
+            videoUrlB={revB.video ? pb.files.getURL(revB, revB.video) : ""}
+            onClose={() => {
+              setShowComparison(false);
+              setCompareMode(false);
+              setSelectedForCompare([]);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };

@@ -199,6 +199,20 @@ export function useCommentEditor({
 
             setComments((prev) => [...prev, created as unknown as Comment]);
 
+            // Create notification for other users
+            try {
+                await pb.collection("notifications").create({
+                    userId: "",
+                    type: "comment_added",
+                    message: `${commenterName[0]} commented on "${revision.title || "a revision"}"`,
+                    revisionId: revision.id,
+                    sourceUser: commenterName[0],
+                    read: false,
+                }, { requestKey: null });
+            } catch (notifErr) {
+                console.warn("Could not create notification:", notifErr);
+            }
+
             setCommentText("");
             setTimestampPills([]);
         } catch (error: any) {

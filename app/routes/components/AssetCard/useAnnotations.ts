@@ -144,6 +144,20 @@ export function useAnnotations({
 
                 setAnnotations(prev => [...prev, newAnnotation]);
                 setCurrentAnnotation(newAnnotation);
+
+                // Create notification for other users
+                try {
+                    await pb.collection("notifications").create({
+                        userId: "",
+                        type: "annotation_added",
+                        message: `${user?.name || user?.email || "Someone"} added an annotation on "${revision.title || "a revision"}"`,
+                        revisionId: revision.id,
+                        sourceUser: user?.name || user?.email || "unknown",
+                        read: false,
+                    }, { requestKey: null });
+                } catch (notifErr) {
+                    console.warn("Could not create notification:", notifErr);
+                }
             }
         } catch (error) {
             console.error("Error saving annotation:", error);

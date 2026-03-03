@@ -22,3 +22,12 @@ yarn.lock
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Project Documentation
+IMPLEMENTATION_DETAILS.md
+PROJECT_DOCUMENTATION.md
+WARP.md
+/docs/
+
+# Lock files
+package-lock.json

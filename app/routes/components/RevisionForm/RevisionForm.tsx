@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import PocketBase from "pocketbase";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface RevisionFormProps {
   assetId: string;
@@ -7,12 +7,12 @@ interface RevisionFormProps {
   onSuccess: () => void;
 }
 
-const pb = new PocketBase("http://127.0.0.1:8090");
 const RevisionForm: React.FC<RevisionFormProps> = ({
   assetId,
   onClose,
   onSuccess,
 }) => {
+  const { pb } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [video, setVideo] = useState<File | null>(null);
@@ -22,18 +22,29 @@ const RevisionForm: React.FC<RevisionFormProps> = ({
     e.preventDefault();
     if (!title || !video || !assetId) return;
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("video", video);
-    formData.append("asset", assetId);
-
     setLoading(true);
     try {
+      // Fetch latest revisions to find the next version number
+      const asset = await pb.collection("assets").getOne(assetId, {
+        expand: "revision_assets",
+      });
+      const revisions = asset?.expand?.revision_assets ?? [];
+
+      const nextVersion = revisions.length > 0
+        ? Math.max(...revisions.map((r: any) => r.versionNumber || 0)) + 1
+        : 1;
+
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("video", video);
+      formData.append("asset", assetId);
+      formData.append("versionNumber", nextVersion.toString());
+
       const newRevision = await pb
         .collection("assets_revision")
         .create(formData);
-      const asset = await pb.collection("assets").getOne(assetId);
+
       const existingRevisions = asset.revision_assets || [];
 
       await pb.collection("assets").update(assetId, {

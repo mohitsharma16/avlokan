@@ -7,6 +7,7 @@ import { useCommentEditor } from "./useCommentEditor";
 import AnnotationToolbar from "./AnnotationToolbar";
 import CommentsPanel from "./CommentsPanel";
 import AIReviewPanel from "./AIReviewPanel";
+import VideoTimeline from "./VideoTimeline";
 import { generateShareLink } from "./utils";
 
 const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
@@ -21,6 +22,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [showModal, setShowModal] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
 
   // Annotation hook
   const {
@@ -44,6 +46,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     canUndo,
     canRedo,
     deleteSelected,
+    annotations,
   } = useAnnotations({
     pb,
     revision,
@@ -122,6 +125,55 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       fetchAnnotations();
     }
   }, [showModal, revision.id, pb]);
+
+  // Playback-synced comments: find the comment closest to current time
+  useEffect(() => {
+    if (!videoRef.current || !showModal) return;
+
+    const video = videoRef.current;
+
+    const parseTs = (ts: string): number => {
+      if (!ts) return -1;
+      const startTs = ts.includes("-") ? ts.split("-")[0] : ts;
+      const parts = startTs.trim().split(":").map(Number);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return parts[0] || 0;
+    };
+
+    const onTimeUpdate = () => {
+      const ct = video.currentTime;
+      let bestId: string | null = null;
+      let bestDist = Infinity;
+
+      for (const c of comments) {
+        if (!c.timestamp) continue;
+        const ts = parseTs(c.timestamp);
+        if (ts < 0) continue;
+        const dist = Math.abs(ct - ts);
+        if (dist < 2 && dist < bestDist) {
+          bestDist = dist;
+          bestId = c.id;
+        }
+      }
+
+      setActiveCommentId(bestId);
+    };
+
+    video.addEventListener("timeupdate", onTimeUpdate);
+    return () => video.removeEventListener("timeupdate", onTimeUpdate);
+  }, [showModal, comments]);
+
+  // Handle timeline marker click
+  const handleMarkerClick = useCallback(
+    (commentId: string, timestamp: number) => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = timestamp;
+      }
+      setActiveCommentId(commentId);
+    },
+    [videoRef]
+  );
 
   // Keyboard shortcuts for annotation tools
   useEffect(() => {
@@ -308,6 +360,17 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               >
                 {isAnnotating ? 'Exit Annotation' : 'Annotate'}
               </button>
+
+              {/* Video Timeline with markers */}
+              <div className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-1">
+                <VideoTimeline
+                  videoRef={videoRef}
+                  comments={comments}
+                  annotations={annotations}
+                  activeCommentId={activeCommentId}
+                  onMarkerClick={handleMarkerClick}
+                />
+              </div>
             </div>
 
             <div
@@ -334,6 +397,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   onEditorChange={handleEditorChange}
                   onEditorMount={handleEditorMount}
                   onSubmit={handleSubmit}
+                  activeCommentId={activeCommentId}
                 />
                 <div className="px-4 pb-4">
                   <AIReviewPanel videoRef={videoRef} />

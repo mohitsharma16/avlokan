@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Editor } from "@monaco-editor/react";
 import type { Comment, Annotation } from "../../types";
 import { formatTime, type Command, type TimestampPill } from "./utils";
@@ -14,6 +14,7 @@ interface CommentsPanelProps {
     commentText: string;
     sidebarWidth?: number;
     timeRangeDuration: number;
+    activeCommentId?: string | null;
     onTimeRangeDurationChange: (duration: number) => void;
     onClose?: () => void;
     onResizeStart?: (e: React.MouseEvent) => void;
@@ -36,6 +37,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     commentText,
     sidebarWidth,
     timeRangeDuration,
+    activeCommentId,
     onTimeRangeDurationChange,
     onClose,
     onResizeStart,
@@ -46,6 +48,17 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     onEditorMount,
     onSubmit,
 }) => {
+    const activeCommentRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to active comment
+    useEffect(() => {
+        if (activeCommentId && activeCommentRef.current) {
+            activeCommentRef.current.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+            });
+        }
+    }, [activeCommentId]);
     return (
         <div
             className="bg-white border-l border-gray-200 p-4 flex flex-col min-h-0 relative"
@@ -93,36 +106,44 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {comments.map((comment) => (
-                            <div
-                                key={comment.id}
-                                className="border border-gray-200 p-3 rounded-md"
-                            >
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center space-x-2">
-                                        <span className="font-semibold text-gray-900 text-sm">
-                                            {comment.name}
+                        {comments.map((comment) => {
+                            const isActive = comment.id === activeCommentId;
+                            return (
+                                <div
+                                    key={comment.id}
+                                    id={`comment-${comment.id}`}
+                                    ref={isActive ? activeCommentRef : undefined}
+                                    className={`border p-3 rounded-md transition-all duration-300 ${isActive
+                                            ? "border-blue-400 bg-blue-50 shadow-md ring-2 ring-blue-300/50"
+                                            : "border-gray-200"
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center space-x-2">
+                                            <span className="font-semibold text-gray-900 text-sm">
+                                                {comment.name}
+                                            </span>
+                                            {comment.timestamp && (
+                                                <button
+                                                    onClick={() =>
+                                                        onSeekToTimestamp(comment.timestamp)
+                                                    }
+                                                    className="bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
+                                                >
+                                                    {comment.timestamp}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-gray-400">
+                                            {new Date(comment.created).toLocaleString()}
                                         </span>
-                                        {comment.timestamp && (
-                                            <button
-                                                onClick={() =>
-                                                    onSeekToTimestamp(comment.timestamp)
-                                                }
-                                                className="bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
-                                            >
-                                                {comment.timestamp}
-                                            </button>
-                                        )}
                                     </div>
-                                    <span className="text-xs text-gray-400">
-                                        {new Date(comment.created).toLocaleString()}
-                                    </span>
+                                    <p className="text-gray-700 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
+                                        {comment.text}
+                                    </p>
                                 </div>
-                                <p className="text-gray-700 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
-                                    {comment.text}
-                                </p>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

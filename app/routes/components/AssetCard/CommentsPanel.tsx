@@ -124,8 +124,8 @@ function TaskBadge({
                                     setShowDropdown(false);
                                 }}
                                 className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 flex items-center gap-1.5 ${task.status === s
-                                        ? "bg-gray-50 font-medium"
-                                        : ""
+                                    ? "bg-gray-50 font-medium"
+                                    : ""
                                     }`}
                             >
                                 <span>{statusConfig[s].icon}</span>
@@ -164,13 +164,13 @@ function CommentItem({
             id={`comment-${comment.id}`}
             ref={isActive ? activeCommentRef : undefined}
             className={`border p-3 rounded-md transition-all duration-300 ${isActive
-                    ? "border-blue-400 bg-blue-50 shadow-md ring-2 ring-blue-300/50"
-                    : "border-gray-200"
+                    ? "border-blue-400 bg-blue-50 dark:bg-blue-900/30 shadow-md ring-2 ring-blue-300/50"
+                    : "border-gray-200 dark:border-gray-700"
                 }`}
         >
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-gray-900 text-sm">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                         {comment.name}
                     </span>
                     {comment.timestamp && (
@@ -184,11 +184,11 @@ function CommentItem({
                         </button>
                     )}
                 </div>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                     {new Date(comment.created).toLocaleString()}
                 </span>
             </div>
-            <p className="text-gray-700 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
+            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
                 {renderCommentText(comment.text)}
             </p>
 
@@ -302,7 +302,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
     return (
         <div
-            className="bg-white border-l border-gray-200 p-4 flex flex-col min-h-0 relative"
+            className="bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 p-4 flex flex-col min-h-0 relative transition-colors"
             style={
                 sidebarWidth
                     ? { width: `${sidebarWidth}px` }
@@ -311,13 +311,13 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
         >
             {onResizeStart && (
                 <div
-                    className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize z-10 transition-colors"
+                    className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-col-resize z-10 transition-colors"
                     onMouseDown={onResizeStart}
                 />
             )}
 
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 className="text-lg font-semibold">
+            <div className="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2">
+                <h2 className="text-lg font-semibold dark:text-gray-100">
                     Comments ({comments.length})
                 </h2>
                 {onClose && (
@@ -451,8 +451,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             <div
                                 key={command.id}
                                 className={`flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${index === selectedCommandIndex
-                                        ? "bg-blue-600 text-white shadow-md"
-                                        : "text-gray-300 hover:bg-gray-800"
+                                    ? "bg-blue-600 text-white shadow-md"
+                                    : "text-gray-300 hover:bg-gray-800"
                                     }`}
                                 onClick={() => onExecuteCommand(command)}
                             >
@@ -462,8 +462,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                     </div>
                                     <div
                                         className={`text-xs truncate ${index === selectedCommandIndex
-                                                ? "text-blue-200"
-                                                : "text-gray-500"
+                                            ? "text-blue-200"
+                                            : "text-gray-500"
                                             }`}
                                     >
                                         {command.description}
@@ -521,8 +521,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                     <div
                                         key={user.id}
                                         className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${index === (selectedAssignIndex || 0)
-                                                ? "bg-blue-600 text-white shadow-md"
-                                                : "text-gray-300 hover:bg-gray-800"
+                                            ? "bg-blue-600 text-white shadow-md"
+                                            : "text-gray-300 hover:bg-gray-800"
                                             }`}
                                         onClick={() =>
                                             onAssignTask && onAssignTask(user)
@@ -530,9 +530,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                     >
                                         <div
                                             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase ${index ===
-                                                    (selectedAssignIndex || 0)
-                                                    ? "bg-blue-400 text-blue-900"
-                                                    : "bg-gray-700 text-gray-300"
+                                                (selectedAssignIndex || 0)
+                                                ? "bg-blue-400 text-blue-900"
+                                                : "bg-gray-700 text-gray-300"
                                                 }`}
                                         >
                                             {displayName.charAt(0)}
@@ -543,9 +543,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                             </div>
                                             <div
                                                 className={`text-xs truncate ${index ===
-                                                        (selectedAssignIndex || 0)
-                                                        ? "text-blue-200"
-                                                        : "text-gray-500"
+                                                    (selectedAssignIndex || 0)
+                                                    ? "text-blue-200"
+                                                    : "text-gray-500"
                                                     }`}
                                             >
                                                 {user.email}
@@ -562,8 +562,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 <div className="border-t pt-4">
                     {/* Replying indicator */}
                     {replyingTo && (
-                        <div className="flex items-center justify-between mb-2 px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
-                            <span className="text-xs text-blue-700">
+                        <div className="flex items-center justify-between mb-2 px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <span className="text-xs text-blue-700 dark:text-blue-300">
                                 ↩ Replying to{" "}
                                 <span className="font-semibold">
                                     @{replyingTo.name}
@@ -585,7 +585,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             {timestampPills.map((pill) => (
                                 <div
                                     key={pill.id}
-                                    className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-200 shadow-sm"
+                                    className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800 shadow-sm"
                                 >
                                     <span className="text-blue-500">🕐</span>
                                     <span>{pill.text}</span>
@@ -602,7 +602,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     )}
 
                     <div className="relative">
-                        <div className="text-[10px] text-gray-400 mb-1 pl-1">
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 pl-1">
                             Type{" "}
                             <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">
                                 $
@@ -626,8 +626,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                         onTimeRangeDurationChange(d)
                                     }
                                     className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all duration-150 ${timeRangeDuration === d
-                                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                                            : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                                        : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
                                         }`}
                                 >
                                     {d}s

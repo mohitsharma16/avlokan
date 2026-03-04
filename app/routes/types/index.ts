@@ -46,6 +46,8 @@ export interface Comment {
   timestamp: string;
   text: string;
   revisionId: string;
+  parentId?: string;
+  mentions?: string[];
   created: string;
 }
 
@@ -77,10 +79,29 @@ export interface AssetCardProps {
   revision: AssetRevision;
 }
 
+export interface Task {
+  id: string;
+  commentId: string;
+  revisionId: string;
+  assignedTo: string;
+  assignedBy: string;
+  status: "open" | "in_progress" | "done";
+  description: string;
+  created: string;
+  updated: string;
+}
+
+export interface PBUser {
+  id: string;
+  email: string;
+  name?: string;
+  avatar?: string;
+}
+
 export interface Notification {
   id: string;
   userId: string;
-  type: "comment_added" | "annotation_added" | "revision_uploaded";
+  type: "comment_added" | "annotation_added" | "revision_uploaded" | "mention" | "task_assigned";
   message: string;
   revisionId: string;
   sourceUser: string;

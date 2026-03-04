@@ -1,6 +1,6 @@
 export const handle = { public: true };
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Form,
   useActionData,
@@ -8,9 +8,10 @@ import {
   useNavigation,
 } from "react-router-dom";
 import PocketBase from "pocketbase";
-import type { LoaderData, Revision } from "../types";
+import type { LoaderData, Revision, PBUser } from "../types";
 import { useCommentEditor } from "../components/AssetCard/useCommentEditor";
 import { useAnnotations } from "../components/AssetCard/useAnnotations";
+import { useTaskAssignments } from "../hooks/useTaskAssignments";
 import CommentsPanel from "../components/AssetCard/CommentsPanel";
 import AnnotationToolbar from "../components/AssetCard/AnnotationToolbar";
 
@@ -187,6 +188,21 @@ export default function RevisionViewer() {
     removePill,
     seekToTimestamp,
     fetchComments,
+    // @Mentions
+    showMentionSuggestions,
+    filteredUsers,
+    selectedMentionIndex,
+    selectMention,
+    allUsers,
+    // Threading
+    replyingTo,
+    setReplyingTo,
+    cancelReply,
+    // Task assignment
+    showAssignDropdown,
+    setShowAssignDropdown,
+    assignFilteredUsers,
+    selectedAssignIndex,
   } = useCommentEditor({
     pb,
     revision,
@@ -194,6 +210,32 @@ export default function RevisionViewer() {
     videoRef,
     showModal: isAuthorized,
   });
+
+  // Task assignments hook
+  const { tasks, createTask, updateTaskStatus } = useTaskAssignments({
+    pb,
+    revisionId: revision.id,
+  });
+
+  // Handle assign task to user
+  const handleAssignTask = useCallback(
+    async (assignUser: PBUser) => {
+      const assignerName = reviewerName || "Unknown";
+      const description = commentText.trim() || "Task from comment";
+      try {
+        await createTask(
+          "",
+          assignUser.name || assignUser.email.split("@")[0],
+          assignerName,
+          description
+        );
+        setShowAssignDropdown(false);
+      } catch (err) {
+        console.error("Failed to assign task:", err);
+      }
+    },
+    [createTask, reviewerName, commentText, setShowAssignDropdown]
+  );
 
   // Fetch comments and annotations when authorized
   useEffect(() => {
@@ -337,6 +379,24 @@ export default function RevisionViewer() {
                 onEditorChange={handleEditorChange}
                 onEditorMount={handleEditorMount}
                 onSubmit={handleSubmit}
+                // @Mentions
+                showMentionSuggestions={showMentionSuggestions}
+                filteredUsers={filteredUsers}
+                selectedMentionIndex={selectedMentionIndex}
+                onSelectMention={selectMention}
+                // Threading
+                replyingTo={replyingTo}
+                onReply={setReplyingTo}
+                onCancelReply={cancelReply}
+                // Tasks
+                tasks={tasks}
+                onUpdateTaskStatus={updateTaskStatus}
+                // Assign dropdown
+                showAssignDropdown={showAssignDropdown}
+                assignFilteredUsers={assignFilteredUsers}
+                selectedAssignIndex={selectedAssignIndex}
+                onAssignTask={handleAssignTask}
+                onCloseAssignDropdown={() => setShowAssignDropdown(false)}
               />
             </div>
           </div>

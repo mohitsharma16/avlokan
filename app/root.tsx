@@ -5,13 +5,14 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useMatches, 
+  useMatches,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import "./app.css";
 import AuthGate from "./routes/components/Auth/AuthGate";
 import { AuthProvider } from "./routes/contexts/AuthContext";
+import { ThemeProvider } from "./routes/contexts/ThemeContext";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -48,24 +49,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const matches = useMatches();
 
-  
+
   const routeHandle = matches[matches.length - 1]?.handle as
     | { public?: boolean }
     | undefined;
 
-  
+
   const isPublicRoute = routeHandle?.public === true;
 
   return (
-    <AuthProvider>
-      {isPublicRoute ? (
-        <Outlet /> 
-      ) : (
-        <AuthGate>
-          <Outlet /> 
-        </AuthGate>
-      )}
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        {isPublicRoute ? (
+          <Outlet />
+        ) : (
+          <AuthGate>
+            <Outlet />
+          </AuthGate>
+        )}
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

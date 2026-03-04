@@ -5,10 +5,13 @@ import { useAnnotations } from "./useAnnotations";
 import type { AnnotationTool } from "./useAnnotations";
 import { useCommentEditor } from "./useCommentEditor";
 import { useTaskAssignments } from "../../hooks/useTaskAssignments";
+import { useVideoZoom } from "../../hooks/useVideoZoom";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import AnnotationToolbar from "./AnnotationToolbar";
 import CommentsPanel from "./CommentsPanel";
 import AIReviewPanel from "./AIReviewPanel";
 import VideoTimeline from "./VideoTimeline";
+import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp";
 import { generateShareLink } from "./utils";
 
 const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
@@ -24,6 +27,13 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [showHelpOverlay, setShowHelpOverlay] = useState(false);
+
+  // Snap-to-grid state
+  const [snapToGrid, setSnapToGrid] = useState(false);
+  const [gridSize, setGridSize] = useState(16);
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
+  const [shapeSize, setShapeSize] = useState<{ w: number; h: number } | null>(null);
 
   // Annotation hook
   const {
@@ -102,6 +112,26 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const { tasks, createTask, updateTaskStatus } = useTaskAssignments({
     pb,
     revisionId: revision.id,
+  });
+
+  // Zoom hook
+  const {
+    zoomLevel,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    transformStyle,
+    isZoomed,
+  } = useVideoZoom({ containerRef });
+
+  // Keyboard shortcuts hook
+  useKeyboardShortcuts({
+    videoRef,
+    isModalOpen: showModal,
+    onCloseModal: () => setShowModal(false),
+    onSubmitComment: handleSubmit,
+    onToggleAnnotating: toggleAnnotating,
+    onToggleHelp: () => setShowHelpOverlay((p) => !p),
   });
 
   // Handle assign task to user
@@ -300,7 +330,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   return (
     <>
       <div
-        className="rounded-2xl shadow-lg overflow-hidden bg-white max-w-md mx-auto border border-gray-200 transition-transform hover:scale-[1.01] cursor-pointer"
+        className="rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800 max-w-md mx-auto border border-gray-200 dark:border-gray-700 transition-transform hover:scale-[1.01] cursor-pointer"
         onClick={() => setShowModal(true)}
       >
         <div className="w-full aspect-video bg-gray-100">
@@ -314,10 +344,10 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
           )}
         </div>
         <div className="p-4 space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 truncate">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
             {revision.title || "Untitled Revision"}
           </h3>
-          <div className="flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <span>{new Date(revision.created).toLocaleString()}</span>
             <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
               v{revision.versionNumber || 1}
@@ -325,7 +355,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
           </div>
           {!!revision.description && (
             <div
-              className="text-gray-700 text-sm leading-relaxed prose max-w-none break-words overflow-wrap-anywhere"
+              className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed prose dark:prose-invert max-w-none break-words overflow-wrap-anywhere"
               dangerouslySetInnerHTML={{ __html: revision.description }}
             />
           )}
@@ -342,7 +372,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
 
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center">
-          <div className="relative bg-white w-full h-full flex">
+          <div className="relative bg-white dark:bg-gray-900 w-full h-full flex">
             <div className="flex-1 bg-black relative" ref={containerRef}>
               {videoUrl && (
                 <>
@@ -372,6 +402,16 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                 </>
               )}
 
+              {/* Zoom Toolbar */}
+              <div className="absolute bottom-10 left-4 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1">
+                <button onClick={zoomOut} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom out">−</button>
+                <span className="text-white text-xs font-mono min-w-[36px] text-center">{Math.round(zoomLevel * 100)}%</span>
+                <button onClick={zoomIn} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom in">+</button>
+                {isZoomed && (
+                  <button onClick={resetZoom} className="text-white text-xs px-1.5 py-0.5 hover:bg-white/20 rounded ml-1" title="Reset zoom">⟲</button>
+                )}
+              </div>
+
               {/* Annotation Toolbar */}
               {isAnnotating && (
                 <AnnotationToolbar
@@ -389,6 +429,12 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   onRedo={redo}
                   canUndo={canUndo}
                   canRedo={canRedo}
+                  snapToGrid={snapToGrid}
+                  onToggleSnap={() => setSnapToGrid((p) => !p)}
+                  gridSize={gridSize}
+                  onGridSizeChange={setGridSize}
+                  cursorPosition={cursorPosition}
+                  shapeSize={shapeSize}
                 />
               )}
 
@@ -416,7 +462,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
             </div>
 
             <div
-              className="bg-white border-l border-gray-200 flex flex-col min-h-0"
+              className="bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col min-h-0"
               style={{ width: `${sidebarWidth}px` }}
             >
               <div className="flex-1 overflow-y-auto">
@@ -465,8 +511,14 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </div>
             </div>
           </div>
-        </div>
+        </div >
       )}
+
+      {/* Keyboard Shortcuts Help Overlay */}
+      <KeyboardShortcutsHelp
+        isOpen={showHelpOverlay}
+        onClose={() => setShowHelpOverlay(false)}
+      />
     </>
   );
 };

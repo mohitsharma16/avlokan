@@ -173,13 +173,13 @@ const Home: React.FC = () => {
       .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#efe6d6]">
+    <div className="min-h-screen bg-[#efe6d6] dark:bg-[#111111] transition-colors">
       <Header />
 
       <div className="max-w-6xl mx-auto p-6 space-y-10">
         {/* Clients */}
         <section>
-          <h2 className="text-2xl font-bold mb-4 text-[#2b1f18]">Clients</h2>
+          <h2 className="text-2xl font-bold mb-4 text-[#2b1f18] dark:text-gray-100">Clients</h2>
 
           <div className="grid gap-4">
             {clients.map((client) => {
@@ -200,8 +200,8 @@ const Home: React.FC = () => {
                   onClick={() => setSelectedClient(client.id)}
                   className={`flex items-start gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2
                     ${isSelected
-                      ? "border-[#8B5E3C] bg-[#d4b785] shadow-lg"
-                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg"
+                      ? "border-[#8B5E3C] bg-[#d4b785] shadow-lg dark:border-blue-500 dark:bg-blue-900/30"
+                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750"
                     }`}
                 >
                   {/* Left: avatar or initials */}
@@ -221,11 +221,11 @@ const Home: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold text-[#2b1f18]">
+                        <h3 className="text-lg font-semibold text-[#2b1f18] dark:text-gray-100">
                           {client.name}
                         </h3>
                         <div
-                          className="mt-1 text-sm text-[#3b2f2b] line-clamp-3 overflow-hidden"
+                          className="mt-1 text-sm text-[#3b2f2b] dark:text-gray-400 line-clamp-3 overflow-hidden"
                         // We render a text preview (not HTML/MD) for consistent clamping
                         >
                           {previewText || (
@@ -243,7 +243,7 @@ const Home: React.FC = () => {
                             e.stopPropagation(); // don't change selected client
                             setOpenClientModal(client);
                           }}
-                          className="text-sm px-2 py-1 rounded text-[#6B4F3A] border border-[#6B4F3A] hover:bg-[#6B4F3A] hover:text-white transition"
+                          className="text-sm px-2 py-1 rounded text-[#6B4F3A] dark:text-gray-300 border border-[#6B4F3A] dark:border-gray-600 hover:bg-[#6B4F3A] hover:text-white dark:hover:bg-gray-700 transition"
                           aria-label={`View ${client.name} description`}
                         >
                           View
@@ -260,7 +260,7 @@ const Home: React.FC = () => {
         {/* Projects */}
         {projects.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold mb-4 text-[#2b1f18]">Projects</h2>
+            <h2 className="text-2xl font-bold mb-4 text-[#2b1f18] dark:text-gray-100">Projects</h2>
             <div className="flex gap-4 overflow-x-auto pb-2">
               {projects.map((project) => (
                 <div
@@ -268,15 +268,15 @@ const Home: React.FC = () => {
                   onClick={() => setSelectedProject(project.id)}
                   className={`flex-shrink-0 w-60 p-4 rounded-2xl transition border-2
                     ${selectedProject === project.id
-                      ? "border-[#8B5E3C] bg-[#d4b785] shadow"
-                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg"
+                      ? "border-[#8B5E3C] bg-[#d4b785] shadow dark:border-blue-500 dark:bg-blue-900/30"
+                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
                     }`}
                 >
-                  <h3 className="font-semibold text-[#2b1f18]">
+                  <h3 className="font-semibold text-[#2b1f18] dark:text-gray-100">
                     {project.name}
                   </h3>
                   {project.description && (
-                    <p className="text-sm text-[#3b2f2b] mt-1 line-clamp-3 overflow-hidden">
+                    <p className="text-sm text-[#3b2f2b] dark:text-gray-400 mt-1 line-clamp-3 overflow-hidden">
                       {/* project.description might be HTML/MD; use preview text to clamp */}
                       {stripMarkdown(project.description)}
                     </p>
@@ -290,7 +290,7 @@ const Home: React.FC = () => {
         {/* Assets */}
         {assets.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold mb-4 text-[#2b1f18]">Assets</h2>
+            <h2 className="text-2xl font-bold mb-4 text-[#2b1f18] dark:text-gray-100">Assets</h2>
             <div className="flex flex-wrap gap-3">
               {assets.map((asset) => (
                 <button
@@ -298,8 +298,8 @@ const Home: React.FC = () => {
                   onClick={() => setSelectedAsset(asset.id)}
                   className={`px-4 py-2 rounded-full border-2 shadow-sm transition
                     ${selectedAsset === asset.id
-                      ? "bg-[#6B4F3A] border-[#6B4F3A] text-white"
-                      : "bg-[#fff7ed] border-[#6B4F3A] text-[#2b1f18] hover:shadow-lg"
+                      ? "bg-[#6B4F3A] border-[#6B4F3A] text-white dark:bg-blue-600 dark:border-blue-600"
+                      : "bg-[#fff7ed] border-[#6B4F3A] text-[#2b1f18] hover:shadow-lg dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
                     }`}
                 >
                   {asset.name}
@@ -312,7 +312,7 @@ const Home: React.FC = () => {
         {/* Revisions */}
         <section>
           {loading && (
-            <p className="text-center text-[#3b2f2b]">
+            <p className="text-center text-[#3b2f2b] dark:text-gray-400">
               Loading asset revisions...
             </p>
           )}
@@ -320,12 +320,12 @@ const Home: React.FC = () => {
 
           {!loading && !error && selectedAsset && revisions.length === 0 && (
             <div className="text-center space-y-4">
-              <p className="text-[#3b2f2b]">
+              <p className="text-[#3b2f2b] dark:text-gray-400">
                 No revisions found for this asset.
               </p>
               <button
                 onClick={() => setIsFormOpen(true)}
-                className="bg-[#6B4F3A] text-white px-4 py-2 rounded-lg shadow hover:opacity-95"
+                className="bg-[#6B4F3A] dark:bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-95"
               >
                 Upload New Revision
               </button>
@@ -338,7 +338,7 @@ const Home: React.FC = () => {
               {revisions.length >= 1 && (
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-bold text-[#2b1f18]">Revisions</h2>
+                    <h2 className="text-2xl font-bold text-[#2b1f18] dark:text-gray-100">Revisions</h2>
                     <button
                       onClick={() => setShowTimeline(true)}
                       className="px-3 py-1 rounded-full border-2 border-[#6B4F3A] text-[#6B4F3A] text-xs font-bold hover:bg-[#6B4F3A] hover:text-white transition-all shadow-sm flex items-center gap-1.5"
@@ -355,7 +355,7 @@ const Home: React.FC = () => {
                       }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${compareMode
                         ? "bg-red-500 text-white hover:bg-red-600"
-                        : "bg-[#6B4F3A] text-white hover:opacity-90"
+                        : "bg-[#6B4F3A] dark:bg-blue-600 text-white hover:opacity-90"
                         }`}
                     >
                       {compareMode ? "Cancel Compare" : "Compare Revisions"}
@@ -365,7 +365,7 @@ const Home: React.FC = () => {
               )}
 
               {compareMode && (
-                <p className="text-sm text-[#3b2f2b] mb-4">
+                <p className="text-sm text-[#3b2f2b] dark:text-gray-400 mb-4">
                   Select exactly 2 revisions to compare ({selectedForCompare.length}/2 selected)
                 </p>
               )}
@@ -424,7 +424,7 @@ const Home: React.FC = () => {
               <div className="text-center mt-6">
                 <button
                   onClick={() => setIsFormOpen(true)}
-                  className="bg-[#6B4F3A] text-white px-4 py-2 rounded-lg shadow"
+                  className="bg-[#6B4F3A] dark:bg-blue-600 text-white px-4 py-2 rounded-lg shadow"
                 >
                   Upload New Revision
                 </button>
@@ -437,10 +437,10 @@ const Home: React.FC = () => {
       {/* Full description modal */}
       {openClientModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white w-full max-w-3xl rounded-lg p-6 shadow-lg overflow-auto max-h-[80vh]">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-3xl rounded-lg p-6 shadow-lg overflow-auto max-h-[80vh]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-semibold text-[#2b1f18]">
+                <h3 className="text-xl font-semibold text-[#2b1f18] dark:text-gray-100">
                   {openClientModal.name}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
@@ -457,7 +457,7 @@ const Home: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 text-[#3b2f2b] prose max-w-none">
+            <div className="mt-4 text-[#3b2f2b] dark:text-gray-300 prose dark:prose-invert max-w-none">
               {/* Render both Markdown + raw HTML safely */}
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}

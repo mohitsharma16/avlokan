@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { OnMount } from "@monaco-editor/react";
 import type { RecordModel } from "pocketbase";
-import type { Comment } from "../../types";
+import type { Comment, PBUser } from "../../types";
 import { formatTime, type Command, type TimestampPill } from "./utils";
 
 interface UseCommentEditorProps {
@@ -30,6 +30,88 @@ export function useCommentEditor({
     const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
     const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
     const [timeRangeDuration, setTimeRangeDuration] = useState(30);
+
+    // --- @Mentions state ---
+    const [allUsers, setAllUsers] = useState<PBUser[]>([]);
+    const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+    const [filteredUsers, setFilteredUsers] = useState<PBUser[]>([]);
+    const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+    const [mentionStartPos, setMentionStartPos] = useState(0);
+    const [pendingMentions, setPendingMentions] = useState<string[]>([]);
+
+    // --- Threading state ---
+    const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+
+    // --- Task assignment state ---
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [assignFilteredUsers, setAssignFilteredUsers] = useState<PBUser[]>([]);
+    const [selectedAssignIndex, setSelectedAssignIndex] = useState(0);
+    const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+
+    // Fetch all users for @mentions
+    const fetchUsers = useCallback(async () => {
+        try {
+            const res = await pb.collection("users").getFullList({
+                requestKey: null,
+            });
+            setAllUsers(
+                res.map((u: any) => ({
+                    id: u.id,
+                    email: u.email,
+                    name: u.name || u.email.split("@")[0],
+                    avatar: u.avatar,
+                }))
+            );
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        }
+    }, [pb]);
+
+    useEffect(() => {
+        if (showModal) {
+            fetchUsers();
+        }
+    }, [showModal, fetchUsers]);
+
+    const cancelReply = () => {
+        setReplyingTo(null);
+    };
+
+    const hideMentionSuggestions = () => {
+        setShowMentionSuggestions(false);
+        setFilteredUsers([]);
+        setSelectedMentionIndex(0);
+    };
+
+    const selectMention = (mentionUser: PBUser) => {
+        if (!editorRef.current || !monacoInstance) return;
+
+        const editor = editorRef.current;
+        const position = editor.getPosition();
+        if (!position) return;
+
+        const displayName = mentionUser.name || mentionUser.email.split("@")[0];
+
+        // Replace @partial with @username
+        const range = new monacoInstance.Range(
+            position.lineNumber,
+            mentionStartPos + 1,
+            position.lineNumber,
+            position.column
+        );
+        editor.executeEdits("insert-mention", [
+            { range, text: `@${displayName} ` },
+        ]);
+
+        // Track this mention
+        setPendingMentions((prev) => {
+            if (prev.includes(mentionUser.id)) return prev;
+            return [...prev, mentionUser.id];
+        });
+
+        hideMentionSuggestions();
+        editor.focus();
+    };
 
     const insertCurrentTimeFrame = () => {
         if (videoRef.current && editorRef.current && monacoInstance) {
@@ -93,11 +175,34 @@ export function useCommentEditor({
         }
     };
 
+    const openAssignDropdown = () => {
+        setAssignFilteredUsers(allUsers);
+        setSelectedAssignIndex(0);
+        setShowAssignDropdown(true);
+
+        // Remove $assign text from editor
+        if (editorRef.current && monacoInstance) {
+            const editor = editorRef.current;
+            const position = editor.getPosition();
+            if (position) {
+                const range = new monacoInstance.Range(
+                    position.lineNumber,
+                    commandStartPos + 1,
+                    position.lineNumber,
+                    position.column
+                );
+                editor.executeEdits("remove-command", [{ range, text: "" }]);
+            }
+        }
+        hideCommandPalette();
+    };
+
     const commands: Command[] = [
         {
             id: "current-time",
             label: "⏱ Current Timestamp",
-            description: "Insert the current video time as a clickable timestamp",
+            description:
+                "Insert the current video time as a clickable timestamp",
             action: insertCurrentTimeFrame,
         },
         {
@@ -105,6 +210,12 @@ export function useCommentEditor({
             label: "🔀 Time Range",
             description: `Insert a ${timeRangeDuration}-second range starting from current time`,
             action: insertTimeRange,
+        },
+        {
+            id: "assign-task",
+            label: "📋 Assign Task",
+            description: "Assign a task to a team member",
+            action: openAssignDropdown,
         },
     ];
 
@@ -116,7 +227,9 @@ export function useCommentEditor({
 
     const executeCommand = (command: Command) => {
         command.action();
-        hideCommandPalette();
+        if (command.id !== "assign-task") {
+            hideCommandPalette();
+        }
     };
 
     const removePill = (pillId: string) => {
@@ -137,8 +250,47 @@ export function useCommentEditor({
 
         const line = model.getLineContent(position.lineNumber);
         const beforeCursor = line.substring(0, position.column - 1);
-        const dollarMatch = beforeCursor.match(/\$([^$\s]*)$/);
 
+        // Check for @mention trigger
+        const atMatch = beforeCursor.match(/@([^\s@$]*)$/);
+        if (atMatch) {
+            const mentionQuery = atMatch[1];
+            const startPos = beforeCursor.lastIndexOf("@");
+            setMentionStartPos(startPos);
+
+            // Filter out timestamp-like patterns (e.g., @00:15)
+            if (/^\d{1,2}:\d{2}/.test(mentionQuery)) {
+                hideMentionSuggestions();
+            } else {
+                const filtered =
+                    mentionQuery === ""
+                        ? allUsers
+                        : allUsers.filter(
+                            (u) =>
+                                (u.name || "")
+                                    .toLowerCase()
+                                    .includes(mentionQuery.toLowerCase()) ||
+                                u.email
+                                    .toLowerCase()
+                                    .includes(mentionQuery.toLowerCase())
+                        );
+
+                setFilteredUsers(filtered);
+                if (filtered.length > 0) {
+                    setShowMentionSuggestions(true);
+                    // Hide command palette if it was showing
+                    hideCommandPalette();
+                } else {
+                    hideMentionSuggestions();
+                }
+            }
+            return;
+        } else {
+            hideMentionSuggestions();
+        }
+
+        // Check for $ command trigger
+        const dollarMatch = beforeCursor.match(/\$([^$\s]*)$/);
         if (dollarMatch) {
             const commandText = dollarMatch[1];
             const startPos = beforeCursor.lastIndexOf("$");
@@ -149,7 +301,9 @@ export function useCommentEditor({
                     ? commands
                     : commands.filter(
                         (cmd) =>
-                            cmd.label.toLowerCase().includes(commandText.toLowerCase()) ||
+                            cmd.label
+                                .toLowerCase()
+                                .includes(commandText.toLowerCase()) ||
                             cmd.description
                                 .toLowerCase()
                                 .includes(commandText.toLowerCase())
@@ -186,35 +340,76 @@ export function useCommentEditor({
             const capturedTimestamp =
                 timestampPills.length > 0 ? timestampPills[0].timestamp : "";
 
-            const newComment = {
+            const newComment: any = {
                 name: commenterName[0],
                 timestamp: capturedTimestamp,
                 text: commentText,
                 revisionId: revision.id,
             };
 
+            // Threading: set parentId if replying
+            if (replyingTo) {
+                newComment.parentId = replyingTo.id;
+            }
+
+            // @Mentions: include mentioned user IDs
+            if (pendingMentions.length > 0) {
+                newComment.mentions = JSON.stringify(pendingMentions);
+            }
+
             const created: RecordModel = await pb
                 .collection("comments")
                 .create(newComment);
 
-            setComments((prev) => [...prev, created as unknown as Comment]);
+            setComments((prev) => {
+                // Deduplicate: the realtime subscription may have already added this
+                if (prev.some((c) => c.id === (created as any).id)) return prev;
+                return [...prev, created as unknown as Comment];
+            });
 
-            // Create notification for other users
+            // Create notification for comment
             try {
-                await pb.collection("notifications").create({
-                    userId: "",
-                    type: "comment_added",
-                    message: `${commenterName[0]} commented on "${revision.title || "a revision"}"`,
-                    revisionId: revision.id,
-                    sourceUser: commenterName[0],
-                    read: false,
-                }, { requestKey: null });
+                await pb.collection("notifications").create(
+                    {
+                        userId: "",
+                        type: "comment_added",
+                        message: `${commenterName[0]} commented on "${revision.title || "a revision"}"`,
+                        revisionId: revision.id,
+                        sourceUser: commenterName[0],
+                        read: false,
+                    },
+                    { requestKey: null }
+                );
             } catch (notifErr) {
                 console.warn("Could not create notification:", notifErr);
             }
 
+            // Create notifications for each mentioned user
+            for (const mentionedUserId of pendingMentions) {
+                try {
+                    await pb.collection("notifications").create(
+                        {
+                            userId: mentionedUserId,
+                            type: "mention",
+                            message: `${commenterName[0]} mentioned you in a comment on "${revision.title || "a revision"}"`,
+                            revisionId: revision.id,
+                            sourceUser: commenterName[0],
+                            read: false,
+                        },
+                        { requestKey: null }
+                    );
+                } catch (notifErr) {
+                    console.warn(
+                        "Could not create mention notification:",
+                        notifErr
+                    );
+                }
+            }
+
             setCommentText("");
             setTimestampPills([]);
+            setPendingMentions([]);
+            setReplyingTo(null);
         } catch (error: any) {
             console.error("Error saving comment:", error);
             alert(`Failed to post comment. Error: ${error.message}`);
@@ -223,7 +418,8 @@ export function useCommentEditor({
 
     const parseTimestamp = (timestamp: string): number => {
         const parts = timestamp.split(":").map(Number);
-        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        if (parts.length === 3)
+            return parts[0] * 3600 + parts[1] * 60 + parts[2];
         if (parts.length === 2) return parts[0] * 60 + parts[1];
         return parts[0] || 0;
     };
@@ -268,17 +464,27 @@ export function useCommentEditor({
                     case "create":
                         setComments((prev) => {
                             // Deduplicate: skip if already in state (from local submit)
-                            if (prev.some((c) => c.id === record.id)) return prev;
-                            return [...prev, record as unknown as Comment];
+                            if (prev.some((c) => c.id === record.id))
+                                return prev;
+                            return [
+                                ...prev,
+                                record as unknown as Comment,
+                            ];
                         });
                         break;
                     case "update":
                         setComments((prev) =>
-                            prev.map((c) => (c.id === record.id ? (record as unknown as Comment) : c))
+                            prev.map((c) =>
+                                c.id === record.id
+                                    ? (record as unknown as Comment)
+                                    : c
+                            )
                         );
                         break;
                     case "delete":
-                        setComments((prev) => prev.filter((c) => c.id !== record.id));
+                        setComments((prev) =>
+                            prev.filter((c) => c.id !== record.id)
+                        );
                         break;
                 }
             })
@@ -301,13 +507,71 @@ export function useCommentEditor({
         setSelectedCommandIndex(0);
     }, [filteredCommands]);
 
-    // Keydown handler for command palette
+    // Reset mention index when filtered users change
+    useEffect(() => {
+        setSelectedMentionIndex(0);
+    }, [filteredUsers]);
+
+    // Keydown handler for command palette AND @mentions
     useEffect(() => {
         if (!editorRef.current || !monacoInstance) return;
 
         const editor = editorRef.current;
 
         const keydownHandler = (e: any) => {
+            // Handle @mentions keyboard navigation
+            if (showMentionSuggestions) {
+                if (e.keyCode === monacoInstance.KeyCode.DownArrow) {
+                    e.preventDefault();
+                    setSelectedMentionIndex((prev) =>
+                        prev < filteredUsers.length - 1 ? prev + 1 : 0
+                    );
+                    return;
+                } else if (e.keyCode === monacoInstance.KeyCode.UpArrow) {
+                    e.preventDefault();
+                    setSelectedMentionIndex((prev) =>
+                        prev > 0 ? prev - 1 : filteredUsers.length - 1
+                    );
+                    return;
+                } else if (e.keyCode === monacoInstance.KeyCode.Enter) {
+                    e.preventDefault();
+                    if (filteredUsers[selectedMentionIndex]) {
+                        selectMention(filteredUsers[selectedMentionIndex]);
+                    }
+                    return;
+                } else if (e.keyCode === monacoInstance.KeyCode.Escape) {
+                    e.preventDefault();
+                    hideMentionSuggestions();
+                    return;
+                }
+            }
+
+            // Handle assign dropdown keyboard navigation
+            if (showAssignDropdown) {
+                if (e.keyCode === monacoInstance.KeyCode.DownArrow) {
+                    e.preventDefault();
+                    setSelectedAssignIndex((prev) =>
+                        prev < assignFilteredUsers.length - 1 ? prev + 1 : 0
+                    );
+                    return;
+                } else if (e.keyCode === monacoInstance.KeyCode.UpArrow) {
+                    e.preventDefault();
+                    setSelectedAssignIndex((prev) =>
+                        prev > 0 ? prev - 1 : assignFilteredUsers.length - 1
+                    );
+                    return;
+                } else if (e.keyCode === monacoInstance.KeyCode.Enter) {
+                    e.preventDefault();
+                    // Selection handled externally
+                    return;
+                } else if (e.keyCode === monacoInstance.KeyCode.Escape) {
+                    e.preventDefault();
+                    setShowAssignDropdown(false);
+                    return;
+                }
+            }
+
+            // Existing command palette handling
             if (!showCommandPalette) {
                 if (e.key === "$") {
                     const position = editor.getPosition();
@@ -315,7 +579,10 @@ export function useCommentEditor({
                     if (!position || !model) return;
 
                     const line = model.getLineContent(position.lineNumber);
-                    const beforeCursor = line.substring(0, position.column - 1);
+                    const beforeCursor = line.substring(
+                        0,
+                        position.column - 1
+                    );
                     const dollarMatch = beforeCursor.match(/\$([^$\s]*)$/);
                     const startPos = beforeCursor.lastIndexOf("$");
 
@@ -326,10 +593,14 @@ export function useCommentEditor({
                                 (cmd) =>
                                     cmd.label
                                         .toLowerCase()
-                                        .includes(dollarMatch[1].toLowerCase()) ||
+                                        .includes(
+                                            dollarMatch[1].toLowerCase()
+                                        ) ||
                                     cmd.description
                                         .toLowerCase()
-                                        .includes(dollarMatch[1].toLowerCase())
+                                        .includes(
+                                            dollarMatch[1].toLowerCase()
+                                        )
                             )
                             : commands;
 
@@ -372,6 +643,12 @@ export function useCommentEditor({
         showCommandPalette,
         filteredCommands,
         selectedCommandIndex,
+        showMentionSuggestions,
+        filteredUsers,
+        selectedMentionIndex,
+        showAssignDropdown,
+        assignFilteredUsers,
+        selectedAssignIndex,
         monacoInstance,
     ]);
 
@@ -392,5 +669,20 @@ export function useCommentEditor({
         seekToTimestamp,
         fetchComments,
         setComments,
+        // @Mentions
+        showMentionSuggestions,
+        filteredUsers,
+        selectedMentionIndex,
+        selectMention,
+        allUsers,
+        // Threading
+        replyingTo,
+        setReplyingTo,
+        cancelReply,
+        // Task assignment
+        showAssignDropdown,
+        setShowAssignDropdown,
+        assignFilteredUsers,
+        selectedAssignIndex,
     };
 }

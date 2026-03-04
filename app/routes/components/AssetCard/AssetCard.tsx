@@ -6,6 +6,7 @@ import type { AnnotationTool } from "./useAnnotations";
 import { useCommentEditor } from "./useCommentEditor";
 import AnnotationToolbar from "./AnnotationToolbar";
 import CommentsPanel from "./CommentsPanel";
+import AIReviewPanel from "./AIReviewPanel";
 import { generateShareLink } from "./utils";
 
 const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
@@ -309,27 +310,36 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </button>
             </div>
 
-            <CommentsPanel
-              comments={comments}
-              isAnnotating={isAnnotating}
-              currentAnnotation={currentAnnotation}
-              showCommandPalette={showCommandPalette}
-              filteredCommands={filteredCommands}
-              selectedCommandIndex={selectedCommandIndex}
-              timestampPills={timestampPills}
-              commentText={commentText}
-              sidebarWidth={sidebarWidth}
-              timeRangeDuration={timeRangeDuration}
-              onTimeRangeDurationChange={setTimeRangeDuration}
-              onClose={() => setShowModal(false)}
-              onResizeStart={handleResizeStart}
-              onSeekToTimestamp={seekToTimestamp}
-              onExecuteCommand={executeCommand}
-              onRemovePill={removePill}
-              onEditorChange={handleEditorChange}
-              onEditorMount={handleEditorMount}
-              onSubmit={handleSubmit}
-            />
+            <div
+              className="bg-white border-l border-gray-200 flex flex-col min-h-0"
+              style={{ width: `${sidebarWidth}px` }}
+            >
+              <div className="flex-1 overflow-y-auto">
+                <CommentsPanel
+                  comments={comments}
+                  isAnnotating={isAnnotating}
+                  currentAnnotation={currentAnnotation}
+                  showCommandPalette={showCommandPalette}
+                  filteredCommands={filteredCommands}
+                  selectedCommandIndex={selectedCommandIndex}
+                  timestampPills={timestampPills}
+                  commentText={commentText}
+                  timeRangeDuration={timeRangeDuration}
+                  onTimeRangeDurationChange={setTimeRangeDuration}
+                  onClose={() => setShowModal(false)}
+                  onResizeStart={handleResizeStart}
+                  onSeekToTimestamp={seekToTimestamp}
+                  onExecuteCommand={executeCommand}
+                  onRemovePill={removePill}
+                  onEditorChange={handleEditorChange}
+                  onEditorMount={handleEditorMount}
+                  onSubmit={handleSubmit}
+                />
+                <div className="px-4 pb-4">
+                  <AIReviewPanel videoRef={videoRef} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

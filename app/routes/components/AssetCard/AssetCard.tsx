@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { AssetCardProps } from "../../types";
+import type { AssetCardProps, PBUser } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAnnotations } from "./useAnnotations";
 import type { AnnotationTool } from "./useAnnotations";
 import { useCommentEditor } from "./useCommentEditor";
+import { useTaskAssignments } from "../../hooks/useTaskAssignments";
 import AnnotationToolbar from "./AnnotationToolbar";
 import CommentsPanel from "./CommentsPanel";
 import AIReviewPanel from "./AIReviewPanel";
@@ -74,6 +75,21 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     removePill,
     seekToTimestamp,
     fetchComments,
+    // @Mentions
+    showMentionSuggestions,
+    filteredUsers,
+    selectedMentionIndex,
+    selectMention,
+    allUsers,
+    // Threading
+    replyingTo,
+    setReplyingTo,
+    cancelReply,
+    // Task assignment
+    showAssignDropdown,
+    setShowAssignDropdown,
+    assignFilteredUsers,
+    selectedAssignIndex,
   } = useCommentEditor({
     pb,
     revision,
@@ -81,6 +97,32 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     videoRef,
     showModal,
   });
+
+  // Task assignments hook
+  const { tasks, createTask, updateTaskStatus } = useTaskAssignments({
+    pb,
+    revisionId: revision.id,
+  });
+
+  // Handle assign task to user
+  const handleAssignTask = useCallback(
+    async (assignUser: PBUser) => {
+      const assignerName = user?.name || user?.email?.split("@")[0] || "Unknown";
+      const description = commentText.trim() || "Task from comment";
+      try {
+        await createTask(
+          "", // commentId will be set after comment is created
+          assignUser.name || assignUser.email.split("@")[0],
+          assignerName,
+          description
+        );
+        setShowAssignDropdown(false);
+      } catch (err) {
+        console.error("Failed to assign task:", err);
+      }
+    },
+    [createTask, user, commentText, setShowAssignDropdown]
+  );
 
   // Sidebar resize logic
   useEffect(() => {
@@ -398,6 +440,24 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   onEditorMount={handleEditorMount}
                   onSubmit={handleSubmit}
                   activeCommentId={activeCommentId}
+                  // @Mentions
+                  showMentionSuggestions={showMentionSuggestions}
+                  filteredUsers={filteredUsers}
+                  selectedMentionIndex={selectedMentionIndex}
+                  onSelectMention={selectMention}
+                  // Threading
+                  replyingTo={replyingTo}
+                  onReply={setReplyingTo}
+                  onCancelReply={cancelReply}
+                  // Tasks
+                  tasks={tasks}
+                  onUpdateTaskStatus={updateTaskStatus}
+                  // Assign dropdown
+                  showAssignDropdown={showAssignDropdown}
+                  assignFilteredUsers={assignFilteredUsers}
+                  selectedAssignIndex={selectedAssignIndex}
+                  onAssignTask={handleAssignTask}
+                  onCloseAssignDropdown={() => setShowAssignDropdown(false)}
                 />
                 <div className="px-4 pb-4">
                   <AIReviewPanel videoRef={videoRef} />

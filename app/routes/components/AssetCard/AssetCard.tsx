@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { AssetCardProps } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAnnotations } from "./useAnnotations";
+import type { AnnotationTool } from "./useAnnotations";
 import { useCommentEditor } from "./useCommentEditor";
 import AnnotationToolbar from "./AnnotationToolbar";
 import CommentsPanel from "./CommentsPanel";
@@ -36,6 +37,12 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     clearCurrentAnnotations,
     fetchAnnotations,
     toggleAnnotating,
+    fabricCanvasRef,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    deleteSelected,
   } = useAnnotations({
     pb,
     revision,
@@ -114,6 +121,79 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       fetchAnnotations();
     }
   }, [showModal, revision.id, pb]);
+
+  // Keyboard shortcuts for annotation tools
+  useEffect(() => {
+    if (!isAnnotating) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept shortcuts when editing a Textbox on the canvas
+      const canvas = fabricCanvasRef.current;
+      if (canvas) {
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && (activeObj as any).isEditing) return;
+      }
+
+      // Don't intercept when typing in an input/textarea/contenteditable
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+
+      // Undo: Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+      }
+
+      // Redo: Ctrl+Shift+Z or Ctrl+Y
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
+      // Delete selected
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelected();
+        return;
+      }
+
+      // Escape: deselect
+      if (e.key === 'Escape') {
+        if (canvas) {
+          canvas.discardActiveObject();
+          canvas.requestRenderAll();
+        }
+        return;
+      }
+
+      // Tool shortcuts (single letter, no modifiers)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const toolMap: Record<string, AnnotationTool> = {
+        p: 'pen',
+        r: 'rectangle',
+        c: 'circle',
+        a: 'arrow',
+        h: 'highlight',
+        t: 'text',
+      };
+
+      const tool = toolMap[e.key.toLowerCase()];
+      if (tool) {
+        setAnnotationTool(tool);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAnnotating, undo, redo, deleteSelected, setAnnotationTool, fabricCanvasRef]);
 
   const handleShareClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -210,6 +290,10 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   setAnnotationDuration={setAnnotationDuration}
                   onSave={saveAnnotation}
                   onClear={clearCurrentAnnotations}
+                  onUndo={undo}
+                  onRedo={redo}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
                 />
               )}
 

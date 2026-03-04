@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Canvas, FabricObject, Circle, Rect, Textbox, PencilBrush } from "fabric";
+import { Canvas, FabricObject, Circle, Rect, Textbox, PencilBrush, Line, Triangle, Group } from "fabric";
 import type { Annotation } from "../../types";
 
-type AnnotationTool = 'pen' | 'rectangle' | 'circle' | 'text' | 'arrow';
+export type AnnotationTool = 'pen' | 'rectangle' | 'circle' | 'text' | 'arrow' | 'highlight';
 
 interface UseAnnotationsProps {
     pb: any;
@@ -28,6 +28,11 @@ export function useAnnotations({
     const drawingOriginRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const isDrawingRef = useRef(false);
 
+    // Undo / Redo stacks (canvas JSON snapshots)
+    const undoStackRef = useRef<string[]>([]);
+    const redoStackRef = useRef<string[]>([]);
+    const isUndoRedoActionRef = useRef(false);
+
     const [isAnnotating, setIsAnnotating] = useState(false);
     const [annotationTool, setAnnotationTool] = useState<AnnotationTool>('pen');
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -36,6 +41,62 @@ export function useAnnotations({
     const [brushSize, setBrushSize] = useState(3);
     const [annotationDuration, setAnnotationDuration] = useState(5);
     const [annotationsLoading, setAnnotationsLoading] = useState(false);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+
+    // Helper: sync canUndo/canRedo state
+    const syncUndoRedoState = useCallback(() => {
+        setCanUndo(undoStackRef.current.length > 0);
+        setCanRedo(redoStackRef.current.length > 0);
+    }, []);
+
+    // Helper: push current canvas state to undo stack
+    const pushUndoState = useCallback(() => {
+        if (!fabricCanvasRef.current || isUndoRedoActionRef.current) return;
+        const json = JSON.stringify(fabricCanvasRef.current.toJSON());
+        undoStackRef.current.push(json);
+        // Clear redo stack on new action
+        redoStackRef.current = [];
+        syncUndoRedoState();
+    }, [syncUndoRedoState]);
+
+    // Undo
+    const undo = useCallback(() => {
+        if (!fabricCanvasRef.current || undoStackRef.current.length === 0) return;
+
+        isUndoRedoActionRef.current = true;
+        const canvas = fabricCanvasRef.current;
+
+        // Save current state to redo stack
+        redoStackRef.current.push(JSON.stringify(canvas.toJSON()));
+
+        // Pop from undo stack and load
+        const prevState = undoStackRef.current.pop()!;
+        canvas.loadFromJSON(JSON.parse(prevState)).then(() => {
+            canvas.renderAll();
+            isUndoRedoActionRef.current = false;
+            syncUndoRedoState();
+        });
+    }, [syncUndoRedoState]);
+
+    // Redo
+    const redo = useCallback(() => {
+        if (!fabricCanvasRef.current || redoStackRef.current.length === 0) return;
+
+        isUndoRedoActionRef.current = true;
+        const canvas = fabricCanvasRef.current;
+
+        // Save current state to undo stack
+        undoStackRef.current.push(JSON.stringify(canvas.toJSON()));
+
+        // Pop from redo stack and load
+        const nextState = redoStackRef.current.pop()!;
+        canvas.loadFromJSON(JSON.parse(nextState)).then(() => {
+            canvas.renderAll();
+            isUndoRedoActionRef.current = false;
+            syncUndoRedoState();
+        });
+    }, [syncUndoRedoState]);
 
     // Initialize Fabric.js canvas
     const initializeFabricCanvas = useCallback(() => {
@@ -93,6 +154,11 @@ export function useAnnotations({
         brush.width = brushSize;
         canvas.freeDrawingBrush = brush;
 
+        // Push undo state after freehand path is created
+        canvas.on('path:created', () => {
+            pushUndoState();
+        });
+
         return () => {
             video.removeEventListener('loadedmetadata', updateCanvasSize);
             video.removeEventListener('play', updateCanvasSize);
@@ -100,7 +166,7 @@ export function useAnnotations({
             canvas.dispose();
             fabricCanvasRef.current = null;
         };
-    }, [brushColor, brushSize]);
+    }, [brushColor, brushSize, pushUndoState]);
 
     // Save current annotation to PocketBase
     const saveAnnotation = useCallback(async () => {
@@ -224,8 +290,20 @@ export function useAnnotations({
                 canvas.defaultCursor = 'crosshair';
                 canvas.hoverCursor = 'crosshair';
                 break;
+            case 'highlight':
+                canvas.defaultCursor = 'crosshair';
+                canvas.hoverCursor = 'crosshair';
+                break;
         }
     }, [brushColor, brushSize]);
+
+    // Helper: convert hex color to rgba with opacity
+    const hexToRgba = (hex: string, opacity: number): string => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    };
 
     // Handle mouse events for shape drawing — drag-to-draw
     const handleMouseDown = useCallback((e: any) => {
@@ -237,6 +315,9 @@ export function useAnnotations({
 
         const canvas = fabricCanvasRef.current;
         const pointer = canvas.getScenePoint(e.e);
+
+        // Push undo state before drawing a new shape
+        pushUndoState();
 
         switch (annotationTool) {
             case 'rectangle': {
@@ -280,6 +361,46 @@ export function useAnnotations({
                 canvas.renderAll();
                 break;
             }
+            case 'arrow': {
+                // Create a line as the shaft
+                const line = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+                    stroke: brushColor,
+                    strokeWidth: brushSize,
+                    selectable: false,
+                    evented: false,
+                    objectCaching: false,
+                });
+                canvas.add(line);
+                drawingShapeRef.current = line;
+                drawingOriginRef.current = { x: pointer.x, y: pointer.y };
+                isDrawingRef.current = true;
+                canvas.selection = false;
+                canvas.renderAll();
+                break;
+            }
+            case 'highlight': {
+                const highlight = new Rect({
+                    left: pointer.x,
+                    top: pointer.y,
+                    width: 1,
+                    height: 1,
+                    fill: hexToRgba(brushColor, 0.3),
+                    stroke: 'transparent',
+                    strokeWidth: 0,
+                    selectable: false,
+                    evented: false,
+                    objectCaching: false,
+                    rx: 4,
+                    ry: 4,
+                });
+                canvas.add(highlight);
+                drawingShapeRef.current = highlight;
+                drawingOriginRef.current = { x: pointer.x, y: pointer.y };
+                isDrawingRef.current = true;
+                canvas.selection = false;
+                canvas.renderAll();
+                break;
+            }
             case 'text': {
                 const textbox = new Textbox('Type here', {
                     left: pointer.x,
@@ -288,6 +409,8 @@ export function useAnnotations({
                     fontSize: Math.max(16, brushSize * 6),
                     width: 200,
                     editable: true,
+                    backgroundColor: hexToRgba('#000000', 0.5),
+                    padding: 8,
                 });
                 canvas.add(textbox);
                 canvas.setActiveObject(textbox);
@@ -296,7 +419,7 @@ export function useAnnotations({
                 break;
             }
         }
-    }, [annotationTool, brushColor, brushSize]);
+    }, [annotationTool, brushColor, brushSize, pushUndoState]);
 
     // Handle mouse move for drag-to-draw shapes
     const handleMouseMove = useCallback((e: any) => {
@@ -329,24 +452,92 @@ export function useAnnotations({
                 top: cy - radius,
             });
             shape.setCoords();
+        } else if (shape instanceof Line && annotationTool === 'arrow') {
+            // Update line endpoint
+            shape.set({
+                x2: pointer.x,
+                y2: pointer.y,
+            });
+            shape.setCoords();
         }
 
         canvas.requestRenderAll();
-    }, []);
+    }, [annotationTool]);
 
     // Handle mouse up — finish drawing shape
     const handleMouseUp = useCallback(() => {
         if (!fabricCanvasRef.current || !drawingShapeRef.current || !isDrawingRef.current) return;
 
+        const canvas = fabricCanvasRef.current;
         const shape = drawingShapeRef.current;
-        shape.set({ selectable: true, evented: true });
-        shape.setCoords();
-        fabricCanvasRef.current.setActiveObject(shape);
-        fabricCanvasRef.current.selection = true;
-        fabricCanvasRef.current.requestRenderAll();
+
+        if (shape instanceof Line && annotationTool === 'arrow') {
+            // Finalize arrow: replace the line with a Group containing line + arrowhead
+            const x1 = shape.x1!;
+            const y1 = shape.y1!;
+            const x2 = shape.x2!;
+            const y2 = shape.y2!;
+
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const headLen = Math.max(12, brushSize * 4);
+
+            // Remove the temporary line
+            canvas.remove(shape);
+
+            // Create the final line
+            const finalLine = new Line([x1, y1, x2, y2], {
+                stroke: brushColor,
+                strokeWidth: brushSize,
+                selectable: false,
+                evented: false,
+            });
+
+            // Create the arrowhead triangle
+            const arrowHead = new Triangle({
+                left: x2,
+                top: y2,
+                width: headLen,
+                height: headLen,
+                fill: brushColor,
+                angle: (angle * 180) / Math.PI + 90,
+                originX: 'center',
+                originY: 'center',
+                selectable: false,
+                evented: false,
+            });
+
+            // Group them together
+            const arrowGroup = new Group([finalLine, arrowHead], {
+                selectable: true,
+                evented: true,
+            });
+
+            canvas.add(arrowGroup);
+            canvas.setActiveObject(arrowGroup);
+        } else {
+            shape.set({ selectable: true, evented: true });
+            shape.setCoords();
+            canvas.setActiveObject(shape);
+        }
+
+        canvas.selection = true;
+        canvas.requestRenderAll();
         drawingShapeRef.current = null;
         isDrawingRef.current = false;
-    }, []);
+    }, [annotationTool, brushColor, brushSize]);
+
+    // Delete selected objects
+    const deleteSelected = useCallback(() => {
+        if (!fabricCanvasRef.current) return;
+        const canvas = fabricCanvasRef.current;
+        const activeObjects = canvas.getActiveObjects();
+        if (activeObjects.length === 0) return;
+
+        pushUndoState();
+        activeObjects.forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+    }, [pushUndoState]);
 
     // Clear all annotations on current timestamp and delete from PocketBase
     const clearCurrentAnnotations = useCallback(async () => {
@@ -371,7 +562,12 @@ export function useAnnotations({
             prev.filter(ann => Math.abs(ann.timestamp - timestamp) > 0.5)
         );
         setCurrentAnnotation(null);
-    }, [annotations, pb]);
+
+        // Reset undo/redo stacks on clear
+        undoStackRef.current = [];
+        redoStackRef.current = [];
+        syncUndoRedoState();
+    }, [annotations, pb, syncUndoRedoState]);
 
     // Initialize fabric canvas when modal opens
     useEffect(() => {
@@ -492,8 +688,13 @@ export function useAnnotations({
         }
         if (entering) {
             setTimeout(() => initializeFabricCanvas(), 50);
+        } else {
+            // Reset undo/redo when exiting annotation mode
+            undoStackRef.current = [];
+            redoStackRef.current = [];
+            syncUndoRedoState();
         }
-    }, [isAnnotating, initializeFabricCanvas]);
+    }, [isAnnotating, initializeFabricCanvas, syncUndoRedoState]);
 
     return {
         isAnnotating,
@@ -514,5 +715,12 @@ export function useAnnotations({
         fetchAnnotations,
         toggleAnnotating,
         fabricCanvasRef,
+        // New: undo/redo
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+        // New: delete selected
+        deleteSelected,
     };
 }

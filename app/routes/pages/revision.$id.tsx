@@ -156,6 +156,10 @@ export default function RevisionViewer() {
     clearCurrentAnnotations,
     fetchAnnotations,
     toggleAnnotating,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useAnnotations({
     pb,
     revision,
@@ -292,6 +296,10 @@ export default function RevisionViewer() {
                       setAnnotationDuration={setAnnotationDuration}
                       onSave={saveAnnotation}
                       onClear={clearCurrentAnnotations}
+                      onUndo={undo}
+                      onRedo={redo}
+                      canUndo={canUndo}
+                      canRedo={canRedo}
                     />
                   )}
 
@@ -299,8 +307,8 @@ export default function RevisionViewer() {
                   <button
                     onClick={toggleAnnotating}
                     className={`absolute top-4 right-4 px-4 py-2 rounded-lg font-medium transition-colors z-20 ${isAnnotating
-                        ? 'bg-red-500 hover:bg-red-600 text-white'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      ? 'bg-red-500 hover:bg-red-600 text-white'
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
                       }`}
                   >
                     {isAnnotating ? 'Exit Annotation' : 'Annotate'}

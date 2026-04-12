@@ -16,7 +16,7 @@ function timeAgo(dateStr: string) {
 
 const Header: React.FC = () => {
   const { pb, user } = useAuth();
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications({
       pb,
@@ -47,37 +47,68 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="w-full bg-gradient-to-r from-[#6B4F3A] to-[#8B5E3C] dark:from-[#1a1a2e] dark:to-[#16213e] shadow-md relative transition-colors">
-      {/* Subtle overlay pattern for retro texture */}
-      <div
-        className="absolute inset-0 opacity-10 dark:opacity-5 pointer-events-none"
-        style={{
-          backgroundImage:
-            "url('https://www.transparenttextures.com/patterns/paper-fibers.png')",
-        }}
-      ></div>
-
-      <div className="relative max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <div className="w-10"></div>
-
-        <h1 className="text-3xl font-extrabold tracking-wide text-[#FDF6E3] dark:text-gray-100 drop-shadow-sm">
+    <header
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        backgroundColor: "rgba(245,245,247,0.85)",
+        borderBottom: "1px solid rgba(0,0,0,0.08)",
+        transition: "var(--transition)",
+      }}
+      className="dark:[background-color:rgba(0,0,0,0.80)] dark:[border-bottom-color:rgba(255,255,255,0.08)]"
+    >
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        {/* Logo */}
+        <span
+          style={{
+            fontSize: "20px",
+            fontWeight: 700,
+            letterSpacing: "-0.03em",
+            color: "var(--text-primary)",
+            fontFamily: "var(--font-apple)",
+          }}
+        >
           Avlokan
-        </h1>
+        </span>
 
-        <div className="flex items-center gap-3">
+        {/* Right actions */}
+        <div className="flex items-center gap-1">
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full text-[#FDF6E3] dark:text-gray-200 hover:bg-white/10 transition-colors"
+            style={{
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              border: "none",
+              background: "transparent",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              transition: "var(--transition)",
+            }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.background =
+                "var(--border)")
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.background =
+                "transparent")
+            }
             aria-label="Toggle dark mode"
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
             {isDark ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
               </svg>
             )}
@@ -87,44 +118,100 @@ const Header: React.FC = () => {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="relative p-2 text-[#FDF6E3] dark:text-gray-200 hover:text-white transition-colors"
-              aria-label="Notifications"
               id="notification-bell"
+              style={{
+                position: "relative",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "50%",
+                border: "none",
+                background: "transparent",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "var(--transition)",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLButtonElement).style.background =
+                  "var(--border)")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLButtonElement).style.background =
+                  "transparent")
+              }
+              aria-label="Notifications"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
 
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    width: 16,
+                    height: 16,
+                    background: "#FF453A",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: "#fff",
+                    border: "2px solid var(--bg)",
+                  }}
+                >
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
 
-            {/* Dropdown */}
+            {/* Notification Dropdown */}
             {isOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-hidden flex flex-col">
+              <div
+                className="animate-apple-scale-in"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 8px)",
+                  width: 320,
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
+                  boxShadow: "var(--shadow-modal)",
+                  overflow: "hidden",
+                  zIndex: 200,
+                }}
+              >
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 16px",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
                     Notifications
-                  </h3>
+                  </span>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--accent)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: 500,
+                      }}
                     >
                       Mark all as read
                     </button>
@@ -132,9 +219,9 @@ const Header: React.FC = () => {
                 </div>
 
                 {/* List */}
-                <div className="overflow-y-auto flex-1">
+                <div style={{ maxHeight: 320, overflowY: "auto" }}>
                   {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-gray-400 dark:text-gray-500 text-sm">
+                    <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }}>
                       No notifications yet
                     </div>
                   ) : (
@@ -142,23 +229,47 @@ const Header: React.FC = () => {
                       <div
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
-                        className={`px-4 py-3 border-b border-gray-50 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${!notification.read ? "bg-blue-50 dark:bg-blue-900/30" : ""
-                          }`}
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                          cursor: "pointer",
+                          background: !notification.read
+                            ? "rgba(0,113,227,0.06)"
+                            : "transparent",
+                          transition: "var(--transition)",
+                        }}
+                        onMouseEnter={(e) =>
+                          ((e.currentTarget as HTMLDivElement).style.background = "var(--bg)")
+                        }
+                        onMouseLeave={(e) =>
+                          ((e.currentTarget as HTMLDivElement).style.background = !notification.read
+                            ? "rgba(0,113,227,0.06)"
+                            : "transparent")
+                        }
                       >
-                        <div className="flex items-start gap-2">
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                           {!notification.read && (
-                            <span className="mt-1.5 w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
+                            <span
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: "50%",
+                                background: "var(--accent)",
+                                marginTop: 6,
+                                flexShrink: 0,
+                              }}
+                            />
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-sm leading-snug ${!notification.read
-                                ? "text-gray-900 dark:text-white font-medium"
-                                : "text-gray-600 dark:text-gray-400"
-                                }`}
-                            >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{
+                              fontSize: 13,
+                              lineHeight: "1.4",
+                              color: !notification.read ? "var(--text-primary)" : "var(--text-secondary)",
+                              fontWeight: !notification.read ? 500 : 400,
+                            }}>
                               {notification.message}
                             </p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            <p style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 3 }}>
                               {timeAgo(notification.created)}
                             </p>
                           </div>

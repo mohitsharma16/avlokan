@@ -145,39 +145,76 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
-            {/* Top bar */}
-            <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-700">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-white font-semibold text-lg">Revision Comparison</h2>
-                    <div className="flex bg-gray-800 rounded-lg overflow-hidden">
-                        <button
-                            onClick={() => setMode("side-by-side")}
-                            className={`px-4 py-1.5 text-sm font-medium transition-colors ${mode === "side-by-side"
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-300 hover:text-white"
-                                }`}
-                        >
-                            Side by Side
-                        </button>
-                        <button
-                            onClick={() => setMode("slider")}
-                            className={`px-4 py-1.5 text-sm font-medium transition-colors ${mode === "slider"
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-300 hover:text-white"
-                                }`}
-                        >
-                            Slider
-                        </button>
-                    </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "12px 20px",
+            background: "rgba(20,20,22,0.92)",
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            fontFamily: "var(--font-apple)",
+          }}
+        >
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <h2 style={{ color: "#F5F5F7", fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>Revision Comparison</h2>
+                <div style={{ display: "flex", background: "rgba(255,255,255,0.08)", borderRadius: 8, overflow: "hidden" }}>
+                    <button
+                        onClick={() => setMode("side-by-side")}
+                        style={{
+                            padding: "6px 14px",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            border: "none",
+                            cursor: "pointer",
+                            fontFamily: "var(--font-apple)",
+                            background: mode === "side-by-side" ? "var(--accent)" : "transparent",
+                            color: mode === "side-by-side" ? "#fff" : "rgba(255,255,255,0.6)",
+                            transition: "var(--transition)",
+                        }}
+                    >
+                        Side by Side
+                    </button>
+                    <button
+                        onClick={() => setMode("slider")}
+                        style={{
+                            padding: "6px 14px",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            border: "none",
+                            cursor: "pointer",
+                            fontFamily: "var(--font-apple)",
+                            background: mode === "slider" ? "var(--accent)" : "transparent",
+                            color: mode === "slider" ? "#fff" : "rgba(255,255,255,0.6)",
+                            transition: "var(--transition)",
+                        }}
+                    >
+                        Slider
+                    </button>
                 </div>
-                <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-white transition-colors text-2xl leading-none"
-                    aria-label="Close comparison"
-                >
-                    ✕
-                </button>
             </div>
+            <button
+                onClick={onClose}
+                style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.8)",
+                    fontSize: 18,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    transition: "var(--transition)",
+                }}
+                aria-label="Close comparison"
+            >
+                ×
+            </button>
+        </div>
 
             {/* Video area */}
             <div className="flex-1 overflow-hidden">
@@ -186,9 +223,9 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                     <div className="flex h-full">
                         {/* Left */}
                         <div className="flex-1 flex flex-col border-r border-gray-700">
-                            <div className="px-4 py-2 bg-gray-800 text-center">
-                                <span className="text-white font-medium">{revisionA.title || "Untitled"}</span>
-                                <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                        <div style={{ padding: "8px 12px", background: "rgba(20,20,22,0.85)", backdropFilter: "blur(12px)", textAlign: "center" }}>
+                                <span style={{ color: "#F5F5F7", fontSize: 13, fontWeight: 500 }}>{revisionA.title || "Untitled"}</span>
+                                <span style={{ marginLeft: 6, background: "var(--accent)", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
                                     v{revisionA.versionNumber || 1}
                                 </span>
                             </div>
@@ -204,9 +241,9 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                         </div>
                         {/* Right */}
                         <div className="flex-1 flex flex-col">
-                            <div className="px-4 py-2 bg-gray-800 text-center">
-                                <span className="text-white font-medium">{revisionB.title || "Untitled"}</span>
-                                <span className="ml-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">
+                        <div style={{ padding: "8px 12px", background: "rgba(20,20,22,0.85)", backdropFilter: "blur(12px)", textAlign: "center" }}>
+                                <span style={{ color: "#F5F5F7", fontSize: 13, fontWeight: 500 }}>{revisionB.title || "Untitled"}</span>
+                                <span style={{ marginLeft: 6, background: "#30D158", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
                                     v{revisionB.versionNumber || 1}
                                 </span>
                             </div>
@@ -258,23 +295,32 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                             </div>
                         </div>
 
-                        {/* Labels */}
-                        <div className="absolute top-3 left-3 bg-blue-600 text-white text-xs px-2 py-1 rounded z-20">
+                        <div style={{ position: "absolute", top: 12, left: 12, background: "var(--accent)", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
                             {revisionA.title || "Untitled"} (v{revisionA.versionNumber || 1})
                         </div>
-                        <div className="absolute top-3 right-3 bg-green-600 text-white text-xs px-2 py-1 rounded z-20">
+                        <div style={{ position: "absolute", top: 12, right: 12, background: "#30D158", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
                             {revisionB.title || "Untitled"} (v{revisionB.versionNumber || 1})
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Bottom controls */}
-            <div className="px-6 py-3 bg-gray-900 border-t border-gray-700 flex items-center gap-4">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                padding: "12px 20px",
+                background: "rgba(20,20,22,0.92)",
+                backdropFilter: "blur(20px)",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                fontFamily: "var(--font-apple)",
+              }}
+            >
                 {/* Play/Pause */}
                 <button
                     onClick={togglePlayPause}
-                    className="text-white hover:text-blue-400 transition-colors"
+                    style={{ color: "rgba(255,255,255,0.8)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}
                     aria-label={isPlaying ? "Pause" : "Play"}
                 >
                     {isPlaying ? (
@@ -289,7 +335,7 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                 </button>
 
                 {/* Time */}
-                <span className="text-gray-400 text-sm min-w-[80px]">
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", minWidth: 80, fontVariantNumeric: "tabular-nums" }}>
                     {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
 
@@ -301,7 +347,7 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                     step={0.1}
                     value={currentTime}
                     onChange={(e) => handleSeek(parseFloat(e.target.value))}
-                    className="flex-1 h-1 accent-blue-500 cursor-pointer"
+                    style={{ flex: 1, accentColor: "var(--accent)", cursor: "pointer", height: 4 }}
                 />
             </div>
         </div>

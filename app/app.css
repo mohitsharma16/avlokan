@@ -2,40 +2,211 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Dark mode transition */
-html {
-  transition: background-color 0.3s ease, color 0.3s ease;
+/* ─────────────────────────────────────────────
+   Apple Design System — Global Tokens
+───────────────────────────────────────────── */
+:root {
+  /* Typography */
+  --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+
+  /* Light palette */
+  --bg:          #F5F5F7;
+  --bg-elevated: #FFFFFF;
+  --surface:     rgba(255, 255, 255, 0.80);
+  --border:      rgba(0, 0, 0, 0.08);
+  --text-primary:   #1D1D1F;
+  --text-secondary: #6E6E73;
+  --text-tertiary:  #98989D;
+  --accent:      #0071E3;
+  --accent-hover:#0077ED;
+  --accent-dark: #2997FF;
+  --success:     #30D158;
+  --warning:     #FF9F0A;
+  --danger:      #FF453A;
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.20);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --transition: all 0.25s cubic-bezier(0.3, 0, 0, 1);
 }
 
-/* Dark mode base styles */
+/* ─── Dark mode overrides ─── */
 html.dark {
   color-scheme: dark;
+  --bg:          #000000;
+  --bg-elevated: #1C1C1E;
+  --surface:     rgba(28, 28, 30, 0.85);
+  --border:      rgba(255, 255, 255, 0.08);
+  --text-primary:   #F5F5F7;
+  --text-secondary: #98989D;
+  --text-tertiary:  #636366;
+  --accent:      #2997FF;
+  --accent-hover:#409CFF;
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.40);
+  --shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.70);
+}
+
+/* ─── Base ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-apple);
+  background-color: var(--bg);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html.dark body {
-  background-color: #111111;
-  color: #e5e5e5;
+  background-color: var(--bg);
+  color: var(--text-primary);
 }
 
-/* Scrollbar styling for dark mode */
-html.dark ::-webkit-scrollbar {
-  width: 8px;
+/* ─── Apple Scrollbars ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-
-html.dark ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 99px;
+}
 html.dark ::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 4px;
+  background: rgba(255,255,255,0.12);
 }
-
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.25);
+}
 html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(255,255,255,0.20);
 }
 
-/* Monaco editor dark mode override */
-html.dark .monaco-editor {
-  --vscode-editor-background: #1e1e1e;
+/* ─── Keyframe Animations ─── */
+@keyframes apple-fade-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
+
+@keyframes apple-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes apple-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-apple-fade-in  { animation: apple-fade-in  0.35s cubic-bezier(0.3,0,0,1) both; }
+.animate-apple-slide-up { animation: apple-slide-up 0.30s cubic-bezier(0.3,0,0,1) both; }
+.animate-apple-scale-in { animation: apple-scale-in 0.25s cubic-bezier(0.3,0,0,1) both; }
+
+/* ─── Reusable Apple Card ─── */
+.apple-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: var(--transition);
+}
+
+.apple-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+/* ─── Apple Button ─── */
+.apple-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 22px;
+  font-family: var(--font-apple);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.apple-btn-primary:hover {
+  background: var(--accent-hover);
+  transform: scale(1.02);
+}
+.apple-btn-primary:active {
+  transform: scale(0.98);
+}
+.apple-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.apple-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-pill);
+  padding: 9px 20px;
+  font-family: var(--font-apple);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.apple-btn-secondary:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ─── Apple Input ─── */
+.apple-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-family: var(--font-apple);
+  font-size: 15px;
+  color: var(--text-primary);
+  transition: var(--transition);
+  outline: none;
+}
+.apple-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+}
+.apple-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ─── Prose overrides ─── */
+.prose { color: var(--text-primary); }
+.prose h1, .prose h2, .prose h3 { color: var(--text-primary); }
+.prose p { color: var(--text-secondary); }

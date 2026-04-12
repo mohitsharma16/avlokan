@@ -116,76 +116,159 @@ const AssetTimeline: React.FC<AssetTimelineProps> = ({ asset, revisions, onClose
 
     const getColor = (type: TimelineEvent["type"]) => {
         switch (type) {
-            case "asset_created": return "bg-blue-500";
-            case "revision_uploaded": return "bg-green-500";
-            case "comment_added": return "bg-yellow-500";
-            case "annotation_added": return "bg-purple-500";
-            default: return "bg-gray-500";
+            case "asset_created": return "var(--accent)";
+            case "revision_uploaded": return "#30D158";
+            case "comment_added": return "#FF9F0A";
+            case "annotation_added": return "#BF5AF2";
+            default: return "var(--text-tertiary)";
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-[#efe6d6] w-full max-w-2xl h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border-4 border-[#6B4F3A]">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            padding: 24,
+            fontFamily: "var(--font-apple)",
+          }}
+        >
+            <div
+              className="animate-apple-scale-in"
+              style={{
+                background: "var(--bg-elevated)",
+                width: "100%",
+                maxWidth: 640,
+                height: "80vh",
+                borderRadius: "var(--radius-xl)",
+                boxShadow: "var(--shadow-modal)",
+                border: "1px solid var(--border)",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
                 {/* Header */}
-                <div className="px-8 py-6 bg-[#6B4F3A] text-white flex items-center justify-between">
+                <div style={{
+                  padding: "24px 28px 20px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                }}>
                     <div>
-                        <h2 className="text-2xl font-bold">Asset Timeline</h2>
-                        <p className="text-[#efe6d6]/80 text-sm">{asset.name}</p>
+                        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: 0 }}>Asset Timeline</h2>
+                        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>{asset.name}</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: "50%",
+                          border: "none",
+                          background: "var(--bg)",
+                          color: "var(--text-secondary)",
+                          fontSize: 18,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
                     >
-                        <span className="text-2xl">×</span>
+                        ×
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto px-8 py-10">
+                <div style={{ flex: 1, overflowY: "auto", padding: "28px 28px" }}>
                     {loading ? (
-                        <div className="h-full flex flex-col items-center justify-center space-y-4">
-                            <div className="w-12 h-12 border-4 border-[#6B4F3A] border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-[#6B4F3A] font-medium italic">Fetching history...</p>
+                        <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+                            <div style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: "50%",
+                              border: "2.5px solid var(--border)",
+                              borderTopColor: "var(--accent)",
+                              animation: "spin 0.7s linear infinite",
+                            }} />
+                            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Fetching history…</p>
                         </div>
                     ) : events.length === 0 ? (
-                        <div className="h-full flex items-center justify-center text-[#6B4F3A] italic">
+                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 14 }}>
                             No activity found for this asset.
                         </div>
                     ) : (
-                        <div className="relative">
-                            {/* Vertical Line */}
-                            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#6B4F3A]/20"></div>
+                        <div style={{ position: "relative" }}>
+                            {/* Vertical line */}
+                            <div style={{ position: "absolute", left: 14, top: 0, bottom: 0, width: 1, background: "var(--border)" }} />
 
-                            <div className="space-y-10">
+                            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                                 {events.map((event) => (
-                                    <div key={event.id} className="relative pl-12 group">
+                                    <div key={event.id} style={{ position: "relative", paddingLeft: 44 }}>
                                         {/* Dot */}
-                                        <div className={`absolute left-0 w-8 h-8 rounded-full ${getColor(event.type)} border-4 border-[#efe6d6] flex items-center justify-center shadow-md z-10 transition-transform group-hover:scale-110`}>
-                                            <span className="text-sm">{getIcon(event.type)}</span>
+                                        <div style={{
+                                          position: "absolute",
+                                          left: 0,
+                                          width: 28,
+                                          height: 28,
+                                          borderRadius: "50%",
+                                          background: getColor(event.type),
+                                          border: "3px solid var(--bg-elevated)",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          fontSize: 13,
+                                          zIndex: 1,
+                                          top: 4,
+                                        }}>
+                                            {getIcon(event.type)}
                                         </div>
 
                                         {/* Card */}
-                                        <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-[#6B4F3A]/10 hover:shadow-md transition-shadow">
-                                            <div className="flex items-start justify-between mb-2">
-                                                <h3 className="font-bold text-[#2b1f18] text-lg">{event.title}</h3>
-                                                <time className="text-xs font-semibold text-[#6B4F3A] uppercase tracking-wider bg-[#6B4F3A]/5 px-2 py-1 rounded">
-                                                    {new Date(event.timestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                        <div style={{
+                                          background: "var(--bg)",
+                                          border: "1px solid var(--border)",
+                                          borderRadius: "var(--radius-md)",
+                                          padding: "14px 16px",
+                                          transition: "var(--transition)",
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                                                <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.01em" }}>{event.title}</h3>
+                                                <time style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0, marginLeft: 12 }}>
+                                                    {new Date(event.timestamp).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                                                 </time>
                                             </div>
 
                                             {event.user && (
-                                                <p className="text-xs font-bold text-[#8B5E3C] mb-2">By {event.user}</p>
+                                                <p style={{ fontSize: 12, color: "var(--accent)", marginBottom: 4, fontWeight: 500 }}>By {event.user}</p>
                                             )}
 
-                                            <p className="text-[#3b2f2b] text-sm leading-relaxed italic line-clamp-3">
+                                            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: "1.5", margin: 0, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
                                                 {event.description}
                                             </p>
 
                                             {event.metadata?.revisionId && (
-                                                <div className="mt-3 flex items-center gap-2">
-                                                    <span className="text-[10px] font-black bg-[#d4b785] text-[#2b1f18] px-2 py-0.5 rounded-full uppercase">
-                                                        REV: {event.metadata.revisionId.slice(-6)}
+                                                <div style={{ marginTop: 8 }}>
+                                                    <span style={{
+                                                      fontSize: 10,
+                                                      fontWeight: 700,
+                                                      background: "rgba(0,113,227,0.08)",
+                                                      color: "var(--accent)",
+                                                      padding: "2px 8px",
+                                                      borderRadius: 99,
+                                                      textTransform: "uppercase",
+                                                      letterSpacing: "0.05em",
+                                                    }}>
+                                                        Rev: {event.metadata.revisionId.slice(-6)}
                                                     </span>
                                                 </div>
                                             )}
@@ -197,6 +280,7 @@ const AssetTimeline: React.FC<AssetTimelineProps> = ({ asset, revisions, onClose
                     )}
                 </div>
             </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 };

@@ -14,42 +14,46 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 
-/**
- * Helper - simple markdown -> plain text (used for preview/clamping).
- * Not perfect but good for card preview; keeps whitespace readable.
- */
 function stripMarkdown(md?: string) {
   if (!md) return "";
   return (
     md
-      // remove images
       .replace(/!\[.*?\]\(.*?\)/g, "")
-      // show link text only
       .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-      // remove inline code/backticks
       .replace(/`{1,3}([^`]*)`{1,3}/g, "$1")
-      // remove headings, blockquote markers, list bullets
       .replace(/^#+\s?/gm, "")
       .replace(/^>\s?/gm, "")
       .replace(/^\s*[-*+]\s+/gm, "")
-      // remove remaining markdown punctuation that's noisy
       .replace(/[_*~]/g, "")
-      // collapse whitespace
       .replace(/\s+/g, " ")
       .trim()
   );
 }
 
-/** Helper to create file URL from PocketBase record */
-function avatarUrl(
-  pb: any,
-  collectionName: string,
-  recordId: string,
-  filename?: string
-) {
+function avatarUrl(pb: any, collectionName: string, recordId: string, filename?: string) {
   if (!filename) return "";
   return `${pb.baseUrl}/api/files/${collectionName}/${recordId}/${filename}`;
 }
+
+function initials(name = "") {
+  return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+}
+
+// ── Reusable section heading ──
+const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h2
+    style={{
+      fontSize: 22,
+      fontWeight: 700,
+      letterSpacing: "-0.03em",
+      color: "var(--text-primary)",
+      marginBottom: 16,
+      fontFamily: "var(--font-apple)",
+    }}
+  >
+    {children}
+  </h2>
+);
 
 const Home: React.FC = () => {
   const { pb } = useAuth();
@@ -67,24 +71,17 @@ const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // Compare mode
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
 
-  // Modal for full client description
-  const [openClientModal, setOpenClientModal] = useState<RecordModel | null>(
-    null
-  );
+  const [openClientModal, setOpenClientModal] = useState<RecordModel | null>(null);
 
-  // Fetch clients
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const res = await pb.collection("clients").getFullList({
-          expand: "client_projects",
-        });
+        const res = await pb.collection("clients").getFullList({ expand: "client_projects" });
         setClients(res);
       } catch (err) {
         console.error("Error fetching clients:", err);
@@ -93,7 +90,6 @@ const Home: React.FC = () => {
     fetchClients();
   }, [pb]);
 
-  // Reset on client change
   useEffect(() => {
     setSelectedProject("");
     setSelectedAsset("");
@@ -108,7 +104,6 @@ const Home: React.FC = () => {
     setProjects(expanded);
   }, [selectedClient, clients]);
 
-  // Fetch assets on project change
   useEffect(() => {
     setSelectedAsset("");
     setAssets([]);
@@ -118,9 +113,7 @@ const Home: React.FC = () => {
 
     const fetchProjectWithAssets = async () => {
       try {
-        const project = await pb
-          .collection("projects")
-          .getOne(selectedProject, { expand: "project_assets" });
+        const project = await pb.collection("projects").getOne(selectedProject, { expand: "project_assets" });
         const expandedAssets = project?.expand?.project_assets ?? [];
         setAssets(expandedAssets);
       } catch (err) {
@@ -131,7 +124,6 @@ const Home: React.FC = () => {
     fetchProjectWithAssets();
   }, [selectedProject, pb]);
 
-  // Fetch revisions on asset change
   useEffect(() => {
     setRevisions([]);
     setError(null);
@@ -140,9 +132,7 @@ const Home: React.FC = () => {
       if (!selectedAsset) return;
       setLoading(true);
       try {
-        const asset = await pb.collection("assets").getOne(selectedAsset, {
-          expand: "revision_assets",
-        });
+        const asset = await pb.collection("assets").getOne(selectedAsset, { expand: "revision_assets" });
         const expandedAssetRevisions = asset?.expand?.revision_assets ?? [];
         setRevisions(expandedAssetRevisions);
       } catch (err) {
@@ -163,93 +153,123 @@ const Home: React.FC = () => {
     setTimeout(() => setSelectedAsset(currentAsset), 0);
   };
 
-  // small fallback avatar (initials)
-  const initials = (name = "") =>
-    name
-      .split(" ")
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
-
   return (
-    <div className="min-h-screen bg-[#efe6d6] dark:bg-[#111111] transition-colors">
+    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "var(--font-apple)" }}>
       <Header />
 
-      <div className="max-w-6xl mx-auto p-6 space-y-10">
-        {/* Clients */}
-        <section>
-          <h2 className="text-2xl font-bold mb-4 text-[#2b1f18] dark:text-gray-100">Clients</h2>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: 56 }}>
 
-          <div className="grid gap-4">
+        {/* ── Clients ── */}
+        <section>
+          <SectionHeading>Clients</SectionHeading>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {clients.map((client) => {
               const isSelected = selectedClient === client.id;
-              // PocketBase editor fields can be HTML strings; preview uses stripped text:
-              const rawDesc = (client as any).description ?? "";
-              const previewText = stripMarkdown(rawDesc);
-
-              // avatar URL: adjust collection name 'clients' (based on your schema)
+              const previewText = stripMarkdown((client as any).description ?? "");
               const avatar = (client as any).avatar;
-              const avatarSrc = avatar
-                ? avatarUrl(pb, "clients", client.id, avatar)
-                : "";
+              const avatarSrc = avatar ? avatarUrl(pb, "clients", client.id, avatar) : "";
 
               return (
                 <div
                   key={client.id}
                   onClick={() => setSelectedClient(client.id)}
-                  className={`flex items-start gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2
-                    ${isSelected
-                      ? "border-[#8B5E3C] bg-[#d4b785] shadow-lg dark:border-blue-500 dark:bg-blue-900/30"
-                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750"
-                    }`}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 16,
+                    padding: "18px 20px",
+                    borderRadius: "var(--radius-lg)",
+                    cursor: "pointer",
+                    background: isSelected ? "rgba(0,113,227,0.07)" : "var(--bg-elevated)",
+                    border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                    boxShadow: isSelected ? "0 0 0 3px rgba(0,113,227,0.12)" : "var(--shadow-card)",
+                    transition: "var(--transition)",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.boxShadow = isSelected
+                      ? "0 0 0 3px rgba(0,113,227,0.12)"
+                      : "var(--shadow-card)";
+                  }}
                 >
-                  {/* Left: avatar or initials */}
+                  {/* Avatar */}
                   {avatarSrc ? (
                     <img
                       src={avatarSrc}
                       alt={client.name}
-                      className="w-20 h-20 object-cover rounded-lg border border-[#6B4F3A] flex-shrink-0"
+                      style={{
+                        width: 64,
+                        height: 64,
+                        objectFit: "cover",
+                        borderRadius: 12,
+                        flexShrink: 0,
+                        border: "1px solid var(--border)",
+                      }}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-lg flex items-center justify-center bg-[#6B4F3A] text-white font-bold text-xl flex-shrink-0">
+                    <div
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 12,
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: isSelected ? "var(--accent)" : "var(--bg)",
+                        color: isSelected ? "#fff" : "var(--text-secondary)",
+                        fontSize: 20,
+                        fontWeight: 700,
+                        letterSpacing: "-0.02em",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
                       {initials(client.name as string)}
                     </div>
                   )}
 
-                  {/* Right: name + truncated preview */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-[#2b1f18] dark:text-gray-100">
-                          {client.name}
-                        </h3>
-                        <div
-                          className="mt-1 text-sm text-[#3b2f2b] dark:text-gray-400 line-clamp-3 overflow-hidden"
-                        // We render a text preview (not HTML/MD) for consistent clamping
-                        >
-                          {previewText || (
-                            <span className="text-gray-500">
-                              No description
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* small View button to open full description */}
-                      <div className="flex-shrink-0 self-start">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // don't change selected client
-                            setOpenClientModal(client);
-                          }}
-                          className="text-sm px-2 py-1 rounded text-[#6B4F3A] dark:text-gray-300 border border-[#6B4F3A] dark:border-gray-600 hover:bg-[#6B4F3A] hover:text-white dark:hover:bg-gray-700 transition"
-                          aria-label={`View ${client.name} description`}
-                        >
-                          View
-                        </button>
-                      </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
+                        {client.name}
+                      </h3>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setOpenClientModal(client); }}
+                        style={{
+                          flexShrink: 0,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: "var(--accent)",
+                          background: "rgba(0,113,227,0.08)",
+                          border: "none",
+                          borderRadius: "var(--radius-pill)",
+                          padding: "5px 12px",
+                          cursor: "pointer",
+                          transition: "var(--transition)",
+                        }}
+                        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.15)")}
+                        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.08)")}
+                        aria-label={`View ${client.name} description`}
+                      >
+                        View
+                      </button>
                     </div>
+                    <p style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      color: "var(--text-secondary)",
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical" as const,
+                      lineHeight: "1.5",
+                    }}>
+                      {previewText || "No description"}
+                    </p>
                   </div>
                 </div>
               );
@@ -257,146 +277,214 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {/* Projects */}
+        {/* ── Projects ── */}
         {projects.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold mb-4 text-[#2b1f18] dark:text-gray-100">Projects</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  onClick={() => setSelectedProject(project.id)}
-                  className={`flex-shrink-0 w-60 p-4 rounded-2xl transition border-2
-                    ${selectedProject === project.id
-                      ? "border-[#8B5E3C] bg-[#d4b785] shadow dark:border-blue-500 dark:bg-blue-900/30"
-                      : "border-[#6B4F3A] bg-[#fff7ed] hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
-                    }`}
-                >
-                  <h3 className="font-semibold text-[#2b1f18] dark:text-gray-100">
-                    {project.name}
-                  </h3>
-                  {project.description && (
-                    <p className="text-sm text-[#3b2f2b] dark:text-gray-400 mt-1 line-clamp-3 overflow-hidden">
-                      {/* project.description might be HTML/MD; use preview text to clamp */}
-                      {stripMarkdown(project.description)}
-                    </p>
-                  )}
-                </div>
-              ))}
+            <SectionHeading>Projects</SectionHeading>
+            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
+              {projects.map((project) => {
+                const isSelected = selectedProject === project.id;
+                return (
+                  <div
+                    key={project.id}
+                    onClick={() => setSelectedProject(project.id)}
+                    style={{
+                      flexShrink: 0,
+                      width: 220,
+                      padding: "16px 18px",
+                      borderRadius: "var(--radius-lg)",
+                      cursor: "pointer",
+                      background: isSelected ? "rgba(0,113,227,0.07)" : "var(--bg-elevated)",
+                      border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                      boxShadow: isSelected ? "0 0 0 3px rgba(0,113,227,0.12)" : "var(--shadow-card)",
+                      transition: "var(--transition)",
+                    }}
+                  >
+                    <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 4px", letterSpacing: "-0.01em" }}>
+                      {project.name}
+                    </h3>
+                    {project.description && (
+                      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: "1.4", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
+                        {stripMarkdown(project.description)}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
 
-        {/* Assets */}
+        {/* ── Assets ── */}
         {assets.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold mb-4 text-[#2b1f18] dark:text-gray-100">Assets</h2>
-            <div className="flex flex-wrap gap-3">
-              {assets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => setSelectedAsset(asset.id)}
-                  className={`px-4 py-2 rounded-full border-2 shadow-sm transition
-                    ${selectedAsset === asset.id
-                      ? "bg-[#6B4F3A] border-[#6B4F3A] text-white dark:bg-blue-600 dark:border-blue-600"
-                      : "bg-[#fff7ed] border-[#6B4F3A] text-[#2b1f18] hover:shadow-lg dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
-                    }`}
-                >
-                  {asset.name}
-                </button>
-              ))}
+            <SectionHeading>Assets</SectionHeading>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {assets.map((asset) => {
+                const isSelected = selectedAsset === asset.id;
+                return (
+                  <button
+                    key={asset.id}
+                    onClick={() => setSelectedAsset(asset.id)}
+                    style={{
+                      padding: "8px 18px",
+                      borderRadius: "var(--radius-pill)",
+                      border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                      background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
+                      color: isSelected ? "#fff" : "var(--text-primary)",
+                      fontSize: 14,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      boxShadow: "var(--shadow-card)",
+                      transition: "var(--transition)",
+                      fontFamily: "var(--font-apple)",
+                    }}
+                  >
+                    {asset.name}
+                  </button>
+                );
+              })}
             </div>
           </section>
         )}
 
-        {/* Revisions */}
+        {/* ── Revisions ── */}
         <section>
           {loading && (
-            <p className="text-center text-[#3b2f2b] dark:text-gray-400">
-              Loading asset revisions...
-            </p>
+            <div style={{ textAlign: "center", padding: "48px 0" }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                border: "2.5px solid var(--border)",
+                borderTopColor: "var(--accent)",
+                animation: "spin 0.7s linear infinite",
+                margin: "0 auto 12px",
+              }} />
+              <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Loading revisions…</p>
+            </div>
           )}
-          {error && <p className="text-center text-red-600">{error}</p>}
+
+          {error && (
+            <p style={{ color: "var(--danger)", textAlign: "center", fontSize: 14 }}>{error}</p>
+          )}
 
           {!loading && !error && selectedAsset && revisions.length === 0 && (
-            <div className="text-center space-y-4">
-              <p className="text-[#3b2f2b] dark:text-gray-400">
-                No revisions found for this asset.
+            <div style={{ textAlign: "center", padding: "64px 0" }}>
+              <p style={{ color: "var(--text-secondary)", marginBottom: 20, fontSize: 15 }}>
+                No revisions for this asset yet.
               </p>
-              <button
-                onClick={() => setIsFormOpen(true)}
-                className="bg-[#6B4F3A] dark:bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-95"
-              >
-                Upload New Revision
+              <button className="apple-btn-primary" onClick={() => setIsFormOpen(true)}>
+                Upload First Revision
               </button>
             </div>
           )}
 
           {!loading && revisions.length > 0 && (
             <>
-              {/* Compare toggle + header */}
-              {revisions.length >= 1 && (
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-bold text-[#2b1f18] dark:text-gray-100">Revisions</h2>
-                    <button
-                      onClick={() => setShowTimeline(true)}
-                      className="px-3 py-1 rounded-full border-2 border-[#6B4F3A] text-[#6B4F3A] text-xs font-bold hover:bg-[#6B4F3A] hover:text-white transition-all shadow-sm flex items-center gap-1.5"
-                    >
-                      <span>🕒</span>
-                      <span>View Timeline</span>
-                    </button>
-                  </div>
-                  {revisions.length >= 2 && (
-                    <button
-                      onClick={() => {
-                        setCompareMode(!compareMode);
-                        setSelectedForCompare([]);
-                      }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${compareMode
-                        ? "bg-red-500 text-white hover:bg-red-600"
-                        : "bg-[#6B4F3A] dark:bg-blue-600 text-white hover:opacity-90"
-                        }`}
-                    >
-                      {compareMode ? "Cancel Compare" : "Compare Revisions"}
-                    </button>
-                  )}
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <SectionHeading>Revisions</SectionHeading>
+                  <button
+                    onClick={() => setShowTimeline(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 14px",
+                      borderRadius: "var(--radius-pill)",
+                      border: "1.5px solid var(--border)",
+                      background: "var(--bg-elevated)",
+                      color: "var(--text-secondary)",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      boxShadow: "var(--shadow-card)",
+                      transition: "var(--transition)",
+                      fontFamily: "var(--font-apple)",
+                    }}
+                  >
+                    <span>⏱</span>
+                    <span>Timeline</span>
+                  </button>
                 </div>
-              )}
+
+                {revisions.length >= 2 && (
+                  <button
+                    onClick={() => { setCompareMode(!compareMode); setSelectedForCompare([]); }}
+                    style={{
+                      padding: "8px 18px",
+                      borderRadius: "var(--radius-pill)",
+                      border: `1.5px solid ${compareMode ? "var(--danger)" : "var(--accent)"}`,
+                      background: compareMode ? "rgba(255,69,58,0.08)" : "rgba(0,113,227,0.08)",
+                      color: compareMode ? "var(--danger)" : "var(--accent)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "var(--transition)",
+                      fontFamily: "var(--font-apple)",
+                    }}
+                  >
+                    {compareMode ? "✕ Cancel Compare" : "Compare Revisions"}
+                  </button>
+                )}
+              </div>
 
               {compareMode && (
-                <p className="text-sm text-[#3b2f2b] dark:text-gray-400 mb-4">
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
                   Select exactly 2 revisions to compare ({selectedForCompare.length}/2 selected)
                 </p>
               )}
 
-              <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div
+                style={{
+                  display: "grid",
+                  gap: 20,
+                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                }}
+              >
                 {revisions.map((revision) => {
                   const isSelectedForCompare = selectedForCompare.includes(revision.id);
                   return (
-                    <div key={revision.id} className="relative">
+                    <div key={revision.id} style={{ position: "relative" }}>
                       {compareMode && (
                         <div
                           onClick={() => {
                             setSelectedForCompare((prev) => {
-                              if (prev.includes(revision.id)) {
-                                return prev.filter((id) => id !== revision.id);
-                              }
+                              if (prev.includes(revision.id)) return prev.filter((id) => id !== revision.id);
                               if (prev.length >= 2) return prev;
                               return [...prev, revision.id];
                             });
                           }}
-                          className={`absolute inset-0 z-10 rounded-2xl cursor-pointer border-4 transition-colors ${isSelectedForCompare
-                            ? "border-blue-500 bg-blue-500/10"
-                            : "border-transparent hover:border-blue-300"
-                            }`}
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            zIndex: 10,
+                            borderRadius: "var(--radius-lg)",
+                            cursor: "pointer",
+                            border: `3px solid ${isSelectedForCompare ? "var(--accent)" : "transparent"}`,
+                            background: isSelectedForCompare ? "rgba(0,113,227,0.08)" : "transparent",
+                            transition: "var(--transition)",
+                          }}
                         >
-                          <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelectedForCompare
-                            ? "bg-blue-500 border-blue-500"
-                            : "bg-white border-gray-400"
-                            }`}>
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 12,
+                              right: 12,
+                              width: 24,
+                              height: 24,
+                              borderRadius: "50%",
+                              border: `2px solid ${isSelectedForCompare ? "var(--accent)" : "var(--border)"}`,
+                              background: isSelectedForCompare ? "var(--accent)" : "var(--bg-elevated)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
                             {isSelectedForCompare && (
-                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <svg width="12" height="12" fill="#fff" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
                             )}
@@ -409,23 +497,22 @@ const Home: React.FC = () => {
                 })}
               </div>
 
-              {/* Compare floating button */}
+              {/* Compare floating CTA */}
               {compareMode && selectedForCompare.length === 2 && (
-                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40">
+                <div style={{ position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)", zIndex: 40 }}>
                   <button
                     onClick={() => setShowComparison(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full shadow-xl text-lg font-semibold transition-transform hover:scale-105"
+                    className="apple-btn-primary"
+                    style={{ padding: "14px 36px", fontSize: 16, boxShadow: "0 8px 32px rgba(0,113,227,0.35)" }}
                   >
                     Compare Selected
                   </button>
                 </div>
               )}
 
-              <div className="text-center mt-6">
-                <button
-                  onClick={() => setIsFormOpen(true)}
-                  className="bg-[#6B4F3A] dark:bg-blue-600 text-white px-4 py-2 rounded-lg shadow"
-                >
+              {/* Upload button */}
+              <div style={{ textAlign: "center", marginTop: 40 }}>
+                <button className="apple-btn-secondary" onClick={() => setIsFormOpen(true)}>
                   Upload New Revision
                 </button>
               </div>
@@ -434,37 +521,88 @@ const Home: React.FC = () => {
         </section>
       </div>
 
-      {/* Full description modal */}
+      {/* ── Client description modal ── */}
       {openClientModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-3xl rounded-lg p-6 shadow-lg overflow-auto max-h-[80vh]">
-            <div className="flex items-start justify-between gap-4">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            padding: 24,
+          }}
+          onClick={() => setOpenClientModal(null)}
+        >
+          <div
+            className="animate-apple-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--bg-elevated)",
+              borderRadius: "var(--radius-xl)",
+              boxShadow: "var(--shadow-modal)",
+              border: "1px solid var(--border)",
+              width: "100%",
+              maxWidth: 640,
+              maxHeight: "80vh",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                padding: "28px 28px 20px",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
               <div>
-                <h3 className="text-xl font-semibold text-[#2b1f18] dark:text-gray-100">
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
                   {openClientModal.name}
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
                   {openClientModal.id}
                 </p>
               </div>
-              <div>
-                <button
-                  onClick={() => setOpenClientModal(null)}
-                  className="px-3 py-1 rounded border text-sm"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                onClick={() => setOpenClientModal(null)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "var(--bg)",
+                  color: "var(--text-secondary)",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                ×
+              </button>
             </div>
 
-            <div className="mt-4 text-[#3b2f2b] dark:text-gray-300 prose dark:prose-invert max-w-none">
-              {/* Render both Markdown + raw HTML safely */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw, rehypeSanitize]}
+            <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
+              <div
+                style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: "1.7" }}
+                className="prose dark:prose-invert max-w-none"
               >
-                {(openClientModal as any).description || "No description."}
-              </ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                >
+                  {(openClientModal as any).description || "No description."}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>
@@ -489,11 +627,7 @@ const Home: React.FC = () => {
             revisionB={revB}
             videoUrlA={revA.video ? pb.files.getURL(revA, revA.video) : ""}
             videoUrlB={revB.video ? pb.files.getURL(revB, revB.video) : ""}
-            onClose={() => {
-              setShowComparison(false);
-              setCompareMode(false);
-              setSelectedForCompare([]);
-            }}
+            onClose={() => { setShowComparison(false); setCompareMode(false); setSelectedForCompare([]); }}
           />
         );
       })()}
@@ -501,11 +635,14 @@ const Home: React.FC = () => {
       {/* Asset Timeline Modal */}
       {showTimeline && selectedAsset && (
         <AssetTimeline
-          asset={assets.find(a => a.id === selectedAsset)}
+          asset={assets.find((a) => a.id === selectedAsset)}
           revisions={revisions}
           onClose={() => setShowTimeline(false)}
         />
       )}
+
+      {/* Loading spinner keyframe inline */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

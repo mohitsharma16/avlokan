@@ -330,39 +330,78 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   return (
     <>
       <div
-        className="rounded-2xl shadow-lg overflow-hidden bg-white dark:bg-gray-800 max-w-md mx-auto border border-gray-200 dark:border-gray-700 transition-transform hover:scale-[1.01] cursor-pointer"
         onClick={() => setShowModal(true)}
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--shadow-card)",
+          overflow: "hidden",
+          cursor: "pointer",
+          transition: "var(--transition)",
+          fontFamily: "var(--font-apple)",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-hover)";
+          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-card)";
+          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        }}
       >
-        <div className="w-full aspect-video bg-gray-100">
+        <div style={{ width: "100%", aspectRatio: "16/9", background: "var(--bg)" }}>
           {videoUrl && (
             <video
               src={videoUrl}
               controls
-              className="w-full h-full object-cover rounded-t-2xl"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
               onClick={(e) => e.stopPropagation()}
             />
           )}
         </div>
-        <div className="p-4 space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+        <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {revision.title || "Untitled Revision"}
           </h3>
-          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-            <span>{new Date(revision.created).toLocaleString()}</span>
-            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+              {new Date(revision.created).toLocaleString()}
+            </span>
+            <span style={{
+              background: "rgba(48,209,88,0.12)",
+              color: "#30D158",
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "3px 8px",
+              borderRadius: "var(--radius-pill)",
+            }}>
               v{revision.versionNumber || 1}
             </span>
           </div>
           {!!revision.description && (
             <div
-              className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed prose dark:prose-invert max-w-none break-words overflow-wrap-anywhere"
+              style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: "1.5" }}
               dangerouslySetInnerHTML={{ __html: revision.description }}
             />
           )}
-          <div className="pt-2">
+          <div style={{ paddingTop: 4 }}>
             <button
               onClick={handleShareClick}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--accent)",
+                background: "rgba(0,113,227,0.08)",
+                border: "none",
+                borderRadius: "var(--radius-pill)",
+                padding: "5px 14px",
+                cursor: "pointer",
+                transition: "var(--transition)",
+                fontFamily: "var(--font-apple)",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.15)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.08)")}
             >
               Share
             </button>
@@ -371,8 +410,8 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center">
-          <div className="relative bg-white dark:bg-gray-900 w-full h-full flex">
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "stretch" }}>
+          <div style={{ position: "relative", background: "var(--bg-elevated)", width: "100%", height: "100%", display: "flex" }}>
             <div className="flex-1 bg-black relative" ref={containerRef}>
               {videoUrl && (
                 <>
@@ -462,10 +501,16 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
             </div>
 
             <div
-              className="bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col min-h-0"
-              style={{ width: `${sidebarWidth}px` }}
+              style={{
+                width: `${sidebarWidth}px`,
+                background: "var(--bg-elevated)",
+                borderLeft: "1px solid var(--border)",
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
+              }}
             >
-              <div className="flex-1 overflow-y-auto">
+              <div style={{ flex: 1, overflowY: "auto" }}>
                 <CommentsPanel
                   comments={comments}
                   isAnnotating={isAnnotating}

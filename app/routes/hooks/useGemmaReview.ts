@@ -40,7 +40,7 @@ export function useGemmaReview(): UseGemmaReview {
     if (workerRef.current) return workerRef.current;
 
     const worker = new Worker(
-      new URL("/gemmaWorker.js", import.meta.url),
+      new URL("../workers/gemmaWorker.ts", import.meta.url),
       { type: "module" }
     );
 

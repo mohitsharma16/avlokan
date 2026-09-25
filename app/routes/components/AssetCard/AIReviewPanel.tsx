@@ -14,10 +14,10 @@ const CATEGORY_META: Record<string, { icon: string; label: string }> = {
     accessibility: { icon: "♿", label: "Accessibility" },
 };
 
-const SEVERITY_CLASSES: Record<string, string> = {
-    info: "bg-blue-100 text-blue-700 border-blue-200",
-    warning: "bg-amber-100 text-amber-700 border-amber-200",
-    error: "bg-red-100 text-red-700 border-red-200",
+const SEVERITY_STYLES: Record<string, { bg: string; color: string; border: string }> = {
+    info: { bg: "rgba(0, 113, 227, 0.1)", color: "var(--accent)", border: "rgba(0, 113, 227, 0.25)" },
+    warning: { bg: "rgba(255, 159, 10, 0.12)", color: "var(--warning)", border: "rgba(255, 159, 10, 0.3)" },
+    error: { bg: "rgba(255, 69, 58, 0.1)", color: "var(--danger)", border: "rgba(255, 69, 58, 0.25)" },
 };
 
 // ── Main Panel ────────────────────────────────────────────────────────────────
@@ -57,10 +57,10 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
     const isAnalyzing = status === "analyzing";
 
     return (
-        <div className="border-t border-gray-200 mt-4 pt-4">
+        <div style={{ borderTop: "1px solid var(--border)", marginTop: 16, paddingTop: 16, fontFamily: "var(--font-apple)" }}>
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                <h3 style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
                     <span>🤖</span>
                     <span>AI Review</span>
                 </h3>
@@ -68,14 +68,21 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                 <button
                     onClick={handleAnalyze}
                     disabled={isAnalyzing}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isAnalyzing
-                        ? "bg-gray-200 text-gray-500 cursor-wait"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                        }`}
+                    style={{
+                        padding: "6px 12px",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        border: "none",
+                        transition: "var(--transition)",
+                        cursor: isAnalyzing ? "wait" : "pointer",
+                        background: isAnalyzing ? "var(--border)" : "var(--accent)",
+                        color: isAnalyzing ? "var(--text-tertiary)" : "#fff",
+                    }}
                 >
                     {isAnalyzing ? (
                         <span className="flex items-center gap-1.5">
-                            <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                            <span style={{ display: "inline-block", width: 11, height: 11, border: "2px solid var(--text-tertiary)", borderTopColor: "transparent", borderRadius: "999px" }} className="animate-spin" />
                             Analyzing…
                         </span>
                     ) : (
@@ -86,8 +93,8 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
 
             {/* ── Error State ── */}
             {error && (
-                <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 mb-3">
-                    <span className="font-medium">Error: </span>
+                <div style={{ padding: 10, background: "rgba(255, 69, 58, 0.1)", border: "1px solid rgba(255, 69, 58, 0.25)", borderRadius: "var(--radius-md)", fontSize: 12, color: "var(--danger)", marginBottom: 12 }}>
+                    <span style={{ fontWeight: 600 }}>Error: </span>
                     {error}
                 </div>
             )}
@@ -96,17 +103,17 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
             {result && (
                 <div className="space-y-3">
                     {/* Summary */}
-                    <div className="p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-800">
+                    <div style={{ padding: 10, background: "rgba(0, 113, 227, 0.08)", border: "1px solid rgba(0, 113, 227, 0.2)", borderRadius: "var(--radius-md)", fontSize: 12, color: "var(--text-primary)" }}>
                         {result.summary}
                     </div>
 
                     {/* Findings count */}
                     {result.findings.length === 0 ? (
-                        <p className="text-xs text-gray-500 text-center py-2">
+                        <p style={{ fontSize: 12, color: "var(--text-secondary)", textAlign: "center", padding: "8px 0" }}>
                             No issues found — looking good! ✨
                         </p>
                     ) : (
-                        <p className="text-[10px] text-gray-500">
+                        <p style={{ fontSize: 10.5, color: "var(--text-tertiary)" }}>
                             {result.findings.length} finding
                             {result.findings.length !== 1 ? "s" : ""} across{" "}
                             {Object.keys(groupedFindings).length} categor
@@ -122,52 +129,80 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                         const isExpanded = expandedCategories.has(catKey);
 
                         return (
-                            <div key={catKey} className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div key={catKey} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
                                 <button
                                     onClick={() => toggleCategory(catKey)}
-                                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                                    style={{
+                                        width: "100%",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        padding: "8px 12px",
+                                        background: "var(--bg)",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        textAlign: "left",
+                                    }}
                                 >
-                                    <span className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                                    <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
                                         <span>{meta.icon}</span>
                                         <span>{meta.label}</span>
-                                        <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px]">
+                                        <span style={{ background: "var(--border)", color: "var(--text-secondary)", padding: "1px 6px", borderRadius: "999px", fontSize: 10 }}>
                                             {findings.length}
                                         </span>
                                     </span>
-                                    <span className="text-gray-400 text-xs">
+                                    <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>
                                         {isExpanded ? "▾" : "▸"}
                                     </span>
                                 </button>
 
                                 {isExpanded && (
-                                    <div className="divide-y divide-gray-100">
-                                        {findings.map((finding) => (
-                                            <div key={finding.id} className="p-3 space-y-1.5">
-                                                <div className="flex items-start gap-2">
-                                                    <span
-                                                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border flex-shrink-0 ${SEVERITY_CLASSES[finding.severity] ||
-                                                            SEVERITY_CLASSES.info
-                                                            }`}
-                                                    >
-                                                        {finding.severity}
-                                                    </span>
-                                                    <span className="text-xs font-medium text-gray-800">
-                                                        {finding.title}
-                                                    </span>
+                                    <div style={{ borderTop: "1px solid var(--border)" }}>
+                                        {findings.map((finding, idx) => {
+                                            const sev = SEVERITY_STYLES[finding.severity] || SEVERITY_STYLES.info;
+                                            return (
+                                                <div
+                                                    key={finding.id}
+                                                    style={{
+                                                        padding: 12,
+                                                        borderTop: idx > 0 ? "1px solid var(--border)" : "none",
+                                                    }}
+                                                    className="space-y-1.5"
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <span
+                                                            style={{
+                                                                display: "inline-block",
+                                                                padding: "1px 6px",
+                                                                borderRadius: 6,
+                                                                fontSize: 10,
+                                                                fontWeight: 500,
+                                                                border: `1px solid ${sev.border}`,
+                                                                background: sev.bg,
+                                                                color: sev.color,
+                                                                flexShrink: 0,
+                                                            }}
+                                                        >
+                                                            {finding.severity}
+                                                        </span>
+                                                        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)" }}>
+                                                            {finding.title}
+                                                        </span>
+                                                    </div>
+                                                    <p style={{ fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)", margin: 0 }}>
+                                                        {finding.description}
+                                                    </p>
+                                                    <div className="flex items-start gap-1.5">
+                                                        <span style={{ fontSize: 10, color: "var(--success)", fontWeight: 500, flexShrink: 0 }}>
+                                                            💡 Fix:
+                                                        </span>
+                                                        <span style={{ fontSize: 11, color: "var(--success)" }}>
+                                                            {finding.suggestion}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                    {finding.description}
-                                                </p>
-                                                <div className="flex items-start gap-1.5">
-                                                    <span className="text-[10px] text-green-700 font-medium flex-shrink-0">
-                                                        💡 Fix:
-                                                    </span>
-                                                    <span className="text-[11px] text-green-700">
-                                                        {finding.suggestion}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

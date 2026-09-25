@@ -247,16 +247,54 @@ export default function RevisionViewer() {
 
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <div className="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
-            Enter your email to view the revision
+      <div
+        className="animate-apple-fade-in"
+        style={{
+          minHeight: "100svh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg)",
+          padding: 24,
+          fontFamily: "var(--font-apple)",
+        }}
+      >
+        <div
+          className="animate-apple-scale-in"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-xl)",
+            boxShadow: "var(--shadow-modal)",
+            padding: 32,
+            maxWidth: 420,
+            width: "100%",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--accent)" }}>
+            Avlokan
+          </span>
+          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text-primary)", margin: "8px 0 4px" }}>
+            You've been asked to review this
           </h2>
+          <p style={{ fontSize: 13.5, color: "var(--text-secondary)", margin: "0 0 20px" }}>
+            Enter your email to open this revision. This link is unique to you and will expire.
+          </p>
           <Form method="post">
             <input type="hidden" name="_action" value="authorize" />
 
             {actionData?.errors?.form && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 10,
+                  background: "rgba(255, 69, 58, 0.1)",
+                  border: "1px solid rgba(255, 69, 58, 0.25)",
+                  color: "var(--danger)",
+                  borderRadius: "var(--radius-md)",
+                  fontSize: 13,
+                }}
+              >
                 {actionData.errors.form}
               </div>
             )}
@@ -264,18 +302,20 @@ export default function RevisionViewer() {
             <input
               type="email"
               name="email"
-              placeholder="Email address"
-              className="border border-gray-300 px-3 py-2 rounded-md mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="you@company.com"
+              className="apple-input"
+              style={{ marginBottom: 16 }}
               required
               disabled={navigation.state === "submitting"}
             />
             <button
               type="submit"
               disabled={navigation.state === "submitting"}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md w-full transition-colors font-semibold"
+              className="apple-btn-primary"
+              style={{ width: "100%" }}
             >
               {navigation.state === "submitting"
-                ? "Authenticating..."
+                ? "Authenticating…"
                 : "Access Revision"}
             </button>
           </Form>
@@ -285,24 +325,39 @@ export default function RevisionViewer() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-gray-900">{revision.title}</h1>
+    <div style={{ minHeight: "100svh", background: "var(--bg)", fontFamily: "var(--font-apple)" }}>
+      <div style={{ background: "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 24px" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--accent)" }}>
+            Avlokan
+          </span>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "4px 0 0" }}>
+            {revision.title}
+          </h1>
           {revision.description && (
             <div
-              className="prose max-w-none text-gray-700 mt-2"
+              className="prose max-w-none mt-2"
+              style={{ fontSize: 14, color: "var(--text-secondary)" }}
               dangerouslySetInnerHTML={{ __html: revision.description }}
             />
           )}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="flex flex-col lg:flex-row lg:gap-8">
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px" }}>
+        <div className="flex flex-col lg:flex-row lg:gap-6">
           <div className="lg:w-2/3">
             {revision.video && (
-              <div className="bg-white rounded-lg shadow-sm p-2 sticky top-6">
+              <div
+                className="sticky top-6"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
+                  boxShadow: "var(--shadow-card)",
+                  padding: 8,
+                }}
+              >
                 <div className="relative" ref={containerRef}>
                   <video
                     ref={videoRef}
@@ -348,10 +403,24 @@ export default function RevisionViewer() {
                   {/* Annotation Toggle Button */}
                   <button
                     onClick={toggleAnnotating}
-                    className={`absolute top-4 right-4 px-4 py-2 rounded-lg font-medium transition-colors z-20 ${isAnnotating
-                      ? 'bg-red-500 hover:bg-red-600 text-white'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                      }`}
+                    className="absolute top-4 right-4 z-20"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "9px 16px",
+                      borderRadius: "var(--radius-pill)",
+                      border: isAnnotating ? "1px solid var(--danger)" : "none",
+                      background: isAnnotating ? "rgba(255, 69, 58, 0.12)" : "var(--accent)",
+                      color: isAnnotating ? "var(--danger)" : "#fff",
+                      fontFamily: "var(--font-apple)",
+                      fontSize: 14,
+                      fontWeight: 500,
+                      letterSpacing: "-0.01em",
+                      boxShadow: isAnnotating ? "none" : "var(--shadow-card)",
+                      cursor: "pointer",
+                      transition: "var(--transition)",
+                    }}
                   >
                     {isAnnotating ? 'Exit Annotation' : 'Annotate'}
                   </button>
@@ -361,7 +430,15 @@ export default function RevisionViewer() {
           </div>
 
           <div className="lg:w-1/3 mt-6 lg:mt-0">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-lg)",
+                boxShadow: "var(--shadow-card)",
+                overflow: "hidden",
+              }}
+            >
               <CommentsPanel
                 comments={comments}
                 isAnnotating={isAnnotating}

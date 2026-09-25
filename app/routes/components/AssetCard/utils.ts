@@ -14,7 +14,8 @@ export interface TimestampPill {
 export function generateShareLink(revisionId: string): string {
     const expires = Date.now() + 60 * 60 * 1000;
     const token = crypto.randomUUID();
-    return `http://localhost:5173/revision/${revisionId}?token=${token}&expires=${expires}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}/revision/${revisionId}?token=${token}&expires=${expires}`;
 }
 
 export function formatTime(timeInSeconds: number): string {

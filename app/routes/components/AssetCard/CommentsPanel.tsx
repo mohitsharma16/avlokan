@@ -53,7 +53,16 @@ function renderCommentText(text: string): React.ReactNode {
             return (
                 <span
                     key={i}
-                    className="inline-flex items-center bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full text-xs font-medium"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        background: "rgba(0, 113, 227, 0.1)",
+                        color: "var(--accent)",
+                        padding: "1px 7px",
+                        borderRadius: "999px",
+                        fontSize: 12,
+                        fontWeight: 500,
+                    }}
                 >
                     {part}
                 </span>
@@ -74,27 +83,9 @@ function TaskBadge({
     const [showDropdown, setShowDropdown] = useState(false);
 
     const statusConfig = {
-        open: {
-            bg: "bg-blue-100",
-            text: "text-blue-700",
-            border: "border-blue-300",
-            label: "Open",
-            icon: "📋",
-        },
-        in_progress: {
-            bg: "bg-yellow-100",
-            text: "text-yellow-700",
-            border: "border-yellow-300",
-            label: "In Progress",
-            icon: "🔄",
-        },
-        done: {
-            bg: "bg-green-100",
-            text: "text-green-700",
-            border: "border-green-300",
-            label: "Done",
-            icon: "✅",
-        },
+        open: { bg: "rgba(0, 113, 227, 0.1)", color: "var(--accent)", label: "Open", icon: "📋" },
+        in_progress: { bg: "rgba(255, 159, 10, 0.12)", color: "var(--warning)", label: "In Progress", icon: "🔄" },
+        done: { bg: "rgba(48, 209, 88, 0.12)", color: "var(--success)", label: "Done", icon: "✅" },
     };
 
     const config = statusConfig[task.status];
@@ -106,14 +97,40 @@ function TaskBadge({
                     e.stopPropagation();
                     setShowDropdown(!showDropdown);
                 }}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${config.bg} ${config.text} ${config.border} hover:shadow-sm`}
+                style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "2px 8px",
+                    borderRadius: "999px",
+                    fontSize: 10,
+                    fontWeight: 500,
+                    border: "1px solid transparent",
+                    background: config.bg,
+                    color: config.color,
+                    transition: "var(--transition)",
+                }}
             >
                 <span>{config.icon}</span>
                 <span>{config.label}</span>
-                <span className="text-gray-400 ml-0.5">→ {task.assignedTo}</span>
+                <span style={{ color: "var(--text-tertiary)", marginLeft: 2 }}>→ {task.assignedTo}</span>
             </button>
             {showDropdown && onUpdateStatus && (
-                <div className="absolute bottom-full mb-1 left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden min-w-[120px]">
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "100%",
+                        marginBottom: 4,
+                        left: 0,
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-md)",
+                        boxShadow: "var(--shadow-hover)",
+                        zIndex: 20,
+                        overflow: "hidden",
+                        minWidth: 130,
+                    }}
+                >
                     {(["open", "in_progress", "done"] as Task["status"][]).map(
                         (s) => (
                             <button
@@ -123,10 +140,19 @@ function TaskBadge({
                                     onUpdateStatus(task.id, s);
                                     setShowDropdown(false);
                                 }}
-                                className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 flex items-center gap-1.5 ${task.status === s
-                                    ? "bg-gray-50 font-medium"
-                                    : ""
-                                    }`}
+                                style={{
+                                    width: "100%",
+                                    padding: "6px 12px",
+                                    textAlign: "left",
+                                    fontSize: 12,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    background: task.status === s ? "var(--bg)" : "transparent",
+                                    fontWeight: task.status === s ? 500 : 400,
+                                    color: "var(--text-primary)",
+                                    border: "none",
+                                }}
                             >
                                 <span>{statusConfig[s].icon}</span>
                                 <span>{statusConfig[s].label}</span>
@@ -163,32 +189,50 @@ function CommentItem({
         <div
             id={`comment-${comment.id}`}
             ref={isActive ? activeCommentRef : undefined}
-            className={`border p-3 rounded-md transition-all duration-300 ${isActive
-                    ? "border-blue-400 bg-blue-50 dark:bg-blue-900/30 shadow-md ring-2 ring-blue-300/50"
-                    : "border-gray-200 dark:border-gray-700"
-                }`}
+            style={{
+                border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                background: isActive ? "rgba(0, 113, 227, 0.06)" : "transparent",
+                boxShadow: isActive ? "0 0 0 3px rgba(0,113,227,0.15)" : "none",
+                padding: 12,
+                borderRadius: "var(--radius-md)",
+                transition: "var(--transition)",
+            }}
         >
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>
                         {comment.name}
                     </span>
                     {comment.timestamp && (
                         <button
-                            onClick={() =>
-                                onSeekToTimestamp(comment.timestamp)
-                            }
-                            className="bg-white rounded-full border px-2 text-black hover:text-black hover:bg-green-300 font-normal text-sm"
+                            onClick={() => onSeekToTimestamp(comment.timestamp)}
+                            style={{
+                                background: "var(--bg)",
+                                borderRadius: "999px",
+                                border: "1px solid var(--border)",
+                                padding: "1px 9px",
+                                color: "var(--text-secondary)",
+                                fontWeight: 400,
+                                fontSize: 12,
+                            }}
+                            onMouseEnter={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.background = "rgba(48, 209, 88, 0.15)";
+                                (e.currentTarget as HTMLButtonElement).style.color = "var(--success)";
+                            }}
+                            onMouseLeave={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.background = "var(--bg)";
+                                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                            }}
                         >
                             {comment.timestamp}
                         </button>
                     )}
                 </div>
-                <span className="text-xs text-gray-400 dark:text-gray-500">
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                     {new Date(comment.created).toLocaleString()}
                 </span>
             </div>
-            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere">
+            <p style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap", fontSize: 13, margin: 0, wordBreak: "break-word" }}>
                 {renderCommentText(comment.text)}
             </p>
 
@@ -210,7 +254,7 @@ function CommentItem({
                 <div className="mt-2">
                     <button
                         onClick={() => onReply(comment)}
-                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                        style={{ fontSize: 11, color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer" }}
                     >
                         ↩ Reply
                     </button>
@@ -302,27 +346,31 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
     return (
         <div
-            className="bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 p-4 flex flex-col min-h-0 relative transition-colors"
-            style={
-                sidebarWidth
-                    ? { width: `${sidebarWidth}px` }
-                    : { width: "100%" }
-            }
+            className="flex flex-col min-h-0 relative"
+            style={{
+                background: "var(--bg-elevated)",
+                borderLeft: "1px solid var(--border)",
+                padding: 16,
+                fontFamily: "var(--font-apple)",
+                transition: "var(--transition)",
+                ...(sidebarWidth ? { width: `${sidebarWidth}px` } : { width: "100%" }),
+            }}
         >
             {onResizeStart && (
                 <div
-                    className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-col-resize z-10 transition-colors"
+                    className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10 transition-colors"
+                    style={{ background: "var(--border)" }}
                     onMouseDown={onResizeStart}
                 />
             )}
 
-            <div className="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2">
-                <h2 className="text-lg font-semibold dark:text-gray-100">
+            <div className="flex justify-between items-center mb-4 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
+                <h2 style={{ fontSize: 15.5, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
                     Comments ({comments.length})
                 </h2>
                 {onClose && (
                     <button
-                        className="text-sm text-red-500 hover:underline"
+                        style={{ fontSize: 13, color: "var(--danger)", background: "none", border: "none", cursor: "pointer" }}
                         onClick={onClose}
                     >
                         Close
@@ -332,12 +380,20 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
             {/* Annotation Info */}
             {isAnnotating && currentAnnotation && (
-                <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded">
-                    <div className="text-sm text-blue-800">
+                <div
+                    className="mb-4"
+                    style={{
+                        padding: 10,
+                        background: "rgba(0, 113, 227, 0.08)",
+                        border: "1px solid rgba(0, 113, 227, 0.2)",
+                        borderRadius: "var(--radius-md)",
+                    }}
+                >
+                    <div style={{ fontSize: 13, color: "var(--text-primary)" }}>
                         📝 Annotation at{" "}
                         {formatTime(currentAnnotation.timestamp)}
                         {currentAnnotation.duration && (
-                            <span className="ml-2 text-blue-600">
+                            <span style={{ marginLeft: 8, color: "var(--accent)" }}>
                                 (visible for {currentAnnotation.duration}s)
                             </span>
                         )}
@@ -348,7 +404,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             <div className="flex-1 overflow-y-auto pr-1 min-h-0">
                 {comments.length === 0 ? (
                     <div className="flex items-center justify-center h-32">
-                        <p className="text-gray-500">No comments yet.</p>
+                        <p style={{ color: "var(--text-tertiary)", fontSize: 13 }}>No comments yet.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -374,7 +430,10 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
                                     {/* Thread replies */}
                                     {hasReplies && (
-                                        <div className="ml-4 mt-1 border-l-2 border-blue-200 pl-3 space-y-2">
+                                        <div
+                                            className="ml-4 mt-1 pl-3 space-y-2"
+                                            style={{ borderLeft: "2px solid rgba(0, 113, 227, 0.2)" }}
+                                        >
                                             {/* Collapse/Expand toggle */}
                                             {replies.length > 2 && (
                                                 <button
@@ -383,7 +442,14 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                                             comment.id
                                                         )
                                                     }
-                                                    className="text-[10px] text-blue-600 hover:text-blue-800 font-medium py-0.5"
+                                                    style={{
+                                                        fontSize: 10,
+                                                        color: "var(--accent)",
+                                                        fontWeight: 500,
+                                                        padding: "2px 0",
+                                                        background: "none",
+                                                        border: "none",
+                                                    }}
                                                 >
                                                     {isCollapsed
                                                         ? `▸ Show ${replies.length} replies`
@@ -440,9 +506,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
             {/* Command Palette */}
             {showCommandPalette && filteredCommands.length > 0 && (
-                <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl mb-3 overflow-hidden backdrop-blur-sm">
-                    <div className="px-3 py-2 border-b border-gray-700">
-                        <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                <div className="mb-3 overflow-hidden" style={{ background: "#18181B", border: "1px solid #2E2E33", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
+                    <div className="px-3 py-2" style={{ borderBottom: "1px solid #2E2E33" }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                             ⚡ Commands
                         </div>
                     </div>
@@ -450,21 +516,20 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                         {filteredCommands.map((command, index) => (
                             <div
                                 key={command.id}
-                                className={`flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${index === selectedCommandIndex
-                                    ? "bg-blue-600 text-white shadow-md"
-                                    : "text-gray-300 hover:bg-gray-800"
-                                    }`}
+                                className="flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150"
+                                style={{
+                                    background: index === selectedCommandIndex ? "var(--accent)" : "transparent",
+                                    boxShadow: index === selectedCommandIndex ? "0 2px 8px rgba(0,113,227,0.35)" : "none",
+                                }}
                                 onClick={() => onExecuteCommand(command)}
                             >
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm truncate">
+                                    <div style={{ fontWeight: 500, fontSize: 13, color: index === selectedCommandIndex ? "#fff" : "#D1D5DB" }} className="truncate">
                                         {command.label}
                                     </div>
                                     <div
-                                        className={`text-xs truncate ${index === selectedCommandIndex
-                                            ? "text-blue-200"
-                                            : "text-gray-500"
-                                            }`}
+                                        style={{ fontSize: 11, color: index === selectedCommandIndex ? "rgba(255,255,255,0.75)" : "#6B7280" }}
+                                        className="truncate"
                                     >
                                         {command.description}
                                     </div>
@@ -472,21 +537,21 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             </div>
                         ))}
                     </div>
-                    <div className="border-t border-gray-700 px-3 py-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                    <div className="px-3 py-1.5 flex items-center gap-3" style={{ borderTop: "1px solid #2E2E33", fontSize: 10, color: "#6B7280" }}>
                         <span>
-                            <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-400">
+                            <kbd style={{ padding: "1px 5px", background: "#27272A", border: "1px solid #3F3F46", borderRadius: 4, color: "#9CA3AF" }}>
                                 ↑↓
                             </kbd>{" "}
                             navigate
                         </span>
                         <span>
-                            <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-400">
+                            <kbd style={{ padding: "1px 5px", background: "#27272A", border: "1px solid #3F3F46", borderRadius: 4, color: "#9CA3AF" }}>
                                 ↵
                             </kbd>{" "}
                             select
                         </span>
                         <span>
-                            <kbd className="px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-400">
+                            <kbd style={{ padding: "1px 5px", background: "#27272A", border: "1px solid #3F3F46", borderRadius: 4, color: "#9CA3AF" }}>
                                 esc
                             </kbd>{" "}
                             dismiss
@@ -499,15 +564,15 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             {showAssignDropdown &&
                 assignFilteredUsers &&
                 assignFilteredUsers.length > 0 && (
-                    <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl mb-3 overflow-hidden backdrop-blur-sm">
-                        <div className="px-3 py-2 border-b border-gray-700 flex items-center justify-between">
-                            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                    <div className="mb-3 overflow-hidden" style={{ background: "#18181B", border: "1px solid #2E2E33", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
+                        <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: "1px solid #2E2E33" }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                 📋 Assign Task To
                             </div>
                             {onCloseAssignDropdown && (
                                 <button
                                     onClick={onCloseAssignDropdown}
-                                    className="text-gray-500 hover:text-gray-300 text-xs"
+                                    style={{ color: "#6B7280", fontSize: 12, background: "none", border: "none", cursor: "pointer" }}
                                 >
                                     ✕
                                 </button>
@@ -517,37 +582,33 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             {assignFilteredUsers.map((user, index) => {
                                 const displayName =
                                     user.name || user.email.split("@")[0];
+                                const isSel = index === (selectedAssignIndex || 0);
                                 return (
                                     <div
                                         key={user.id}
-                                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${index === (selectedAssignIndex || 0)
-                                            ? "bg-blue-600 text-white shadow-md"
-                                            : "text-gray-300 hover:bg-gray-800"
-                                            }`}
+                                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150"
+                                        style={{
+                                            background: isSel ? "var(--accent)" : "transparent",
+                                            boxShadow: isSel ? "0 2px 8px rgba(0,113,227,0.35)" : "none",
+                                        }}
                                         onClick={() =>
                                             onAssignTask && onAssignTask(user)
                                         }
                                     >
                                         <div
-                                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase ${index ===
-                                                (selectedAssignIndex || 0)
-                                                ? "bg-blue-400 text-blue-900"
-                                                : "bg-gray-700 text-gray-300"
-                                                }`}
+                                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase flex-shrink-0"
+                                            style={{
+                                                background: isSel ? "rgba(255,255,255,0.25)" : "#27272A",
+                                                color: isSel ? "#fff" : "#D1D5DB",
+                                            }}
                                         >
                                             {displayName.charAt(0)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-sm truncate">
+                                            <div style={{ fontWeight: 500, fontSize: 13, color: isSel ? "#fff" : "#D1D5DB" }} className="truncate">
                                                 {displayName}
                                             </div>
-                                            <div
-                                                className={`text-xs truncate ${index ===
-                                                    (selectedAssignIndex || 0)
-                                                    ? "text-blue-200"
-                                                    : "text-gray-500"
-                                                    }`}
-                                            >
+                                            <div style={{ fontSize: 11, color: isSel ? "rgba(255,255,255,0.75)" : "#6B7280" }} className="truncate">
                                                 {user.email}
                                             </div>
                                         </div>
@@ -559,20 +620,27 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 )}
 
             <div className="space-y-2 relative">
-                <div className="border-t pt-4">
+                <div className="pt-4" style={{ borderTop: "1px solid var(--border)" }}>
                     {/* Replying indicator */}
                     {replyingTo && (
-                        <div className="flex items-center justify-between mb-2 px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <span className="text-xs text-blue-700 dark:text-blue-300">
+                        <div
+                            className="flex items-center justify-between mb-2 px-2 py-1.5"
+                            style={{
+                                background: "rgba(0, 113, 227, 0.08)",
+                                border: "1px solid rgba(0, 113, 227, 0.2)",
+                                borderRadius: "var(--radius-md)",
+                            }}
+                        >
+                            <span style={{ fontSize: 12, color: "var(--accent)" }}>
                                 ↩ Replying to{" "}
-                                <span className="font-semibold">
+                                <span style={{ fontWeight: 600 }}>
                                     @{replyingTo.name}
                                 </span>
                             </span>
                             {onCancelReply && (
                                 <button
                                     onClick={onCancelReply}
-                                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                                    style={{ fontSize: 12, color: "var(--danger)", fontWeight: 500, background: "none", border: "none", cursor: "pointer" }}
                                 >
                                     Cancel
                                 </button>
@@ -585,13 +653,22 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             {timestampPills.map((pill) => (
                                 <div
                                     key={pill.id}
-                                    className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800 shadow-sm"
+                                    className="inline-flex items-center gap-1.5"
+                                    style={{
+                                        background: "rgba(0, 113, 227, 0.08)",
+                                        color: "var(--accent)",
+                                        padding: "4px 10px",
+                                        borderRadius: "999px",
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        border: "1px solid rgba(0, 113, 227, 0.2)",
+                                    }}
                                 >
-                                    <span className="text-blue-500">🕐</span>
+                                    <span>🕐</span>
                                     <span>{pill.text}</span>
                                     <button
                                         onClick={() => onRemovePill(pill.id)}
-                                        className="text-blue-400 hover:text-red-500 ml-0.5 focus:outline-none transition-colors"
+                                        style={{ marginLeft: 2, color: "var(--accent)", opacity: 0.6, background: "none", border: "none", cursor: "pointer" }}
                                         title="Remove timestamp"
                                     >
                                         ×
@@ -602,13 +679,13 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     )}
 
                     <div className="relative">
-                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 pl-1">
+                        <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 4, paddingLeft: 4 }}>
                             Type{" "}
-                            <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">
+                            <kbd style={{ padding: "1px 5px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "ui-monospace, monospace" }}>
                                 $
                             </kbd>{" "}
                             for commands ·{" "}
-                            <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono">
+                            <kbd style={{ padding: "1px 5px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "ui-monospace, monospace" }}>
                                 @
                             </kbd>{" "}
                             to mention
@@ -616,7 +693,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
                         {/* Time Range Duration Selector */}
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">
+                            <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>
                                 Range:
                             </span>
                             {[10, 30, 60, 120].map((d) => (
@@ -625,10 +702,16 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                     onClick={() =>
                                         onTimeRangeDurationChange(d)
                                     }
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all duration-150 ${timeRangeDuration === d
-                                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                                        : "bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100"
-                                        }`}
+                                    style={{
+                                        padding: "1px 8px",
+                                        borderRadius: "999px",
+                                        fontSize: 10,
+                                        fontWeight: 500,
+                                        border: `1px solid ${timeRangeDuration === d ? "var(--accent)" : "var(--border)"}`,
+                                        background: timeRangeDuration === d ? "var(--accent)" : "var(--bg)",
+                                        color: timeRangeDuration === d ? "#fff" : "var(--text-secondary)",
+                                        transition: "var(--transition)",
+                                    }}
                                 >
                                     {d}s
                                 </button>
@@ -652,44 +735,69 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                             onTimeRangeDurationChange(val);
                                         }
                                     }}
-                                    className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                    style={{
+                                        width: 56,
+                                        padding: "1px 6px",
+                                        fontSize: 10,
+                                        border: "1px solid var(--border)",
+                                        borderRadius: 6,
+                                        textAlign: "center",
+                                        background: "var(--bg)",
+                                        color: "var(--text-primary)",
+                                    }}
                                 />
-                                <span className="text-[10px] text-gray-400">
+                                <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
                                     sec
                                 </span>
                             </div>
                         </div>
 
-                        <Editor
-                            className="w-full border rounded-md"
-                            theme="light"
-                            height="120px"
-                            defaultLanguage="markdown"
-                            value={commentText}
-                            onChange={onEditorChange}
-                            onMount={onEditorMount}
-                            options={{
-                                placeholder: "Write your comment...",
-                                fontSize: 14,
-                                minimap: { enabled: false },
-                                contextmenu: false,
-                                guides: {
-                                    indentation: false,
-                                    bracketPairs: false,
-                                },
-                                lineDecorationsWidth: 0,
-                                lineNumbersMinChars: 0,
-                                lineNumbers: "off",
-                                glyphMargin: false,
-                                scrollbar: { vertical: "auto" },
-                                wordWrap: "on",
-                                folding: false,
-                            }}
-                        />
+                        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                            <Editor
+                                className="w-full"
+                                theme="light"
+                                height="120px"
+                                defaultLanguage="markdown"
+                                value={commentText}
+                                onChange={onEditorChange}
+                                onMount={onEditorMount}
+                                options={{
+                                    placeholder: "Write your comment...",
+                                    fontSize: 14,
+                                    minimap: { enabled: false },
+                                    contextmenu: false,
+                                    guides: {
+                                        indentation: false,
+                                        bracketPairs: false,
+                                    },
+                                    lineDecorationsWidth: 0,
+                                    lineNumbersMinChars: 0,
+                                    lineNumbers: "off",
+                                    glyphMargin: false,
+                                    scrollbar: { vertical: "auto" },
+                                    wordWrap: "on",
+                                    folding: false,
+                                }}
+                            />
+                        </div>
                     </div>
 
                     <button
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg w-full mt-2 font-medium text-sm transition-colors shadow-sm"
+                        className="w-full mt-2"
+                        style={{
+                            background: "var(--accent)",
+                            color: "#fff",
+                            padding: "8px 12px",
+                            borderRadius: "var(--radius-md)",
+                            fontWeight: 500,
+                            fontSize: 13,
+                            border: "none",
+                            boxShadow: "var(--shadow-card)",
+                            transition: "var(--transition)",
+                            cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--accent-hover)")}
+                        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--accent)")}
                         onClick={onSubmit}
                     >
                         {replyingTo ? "Post Reply" : "Post Comment"}

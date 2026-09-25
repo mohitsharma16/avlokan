@@ -480,11 +480,42 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               {/* Annotation Toggle Button */}
               <button
                 onClick={toggleAnnotating}
-                className={`absolute top-4 right-4 px-4 py-2 rounded-lg font-medium transition-colors z-20 ${isAnnotating
-                  ? 'bg-red-500 hover:bg-red-600 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
+                className="absolute top-4 right-4 z-20 animate-apple-scale-in"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "9px 16px",
+                  borderRadius: "var(--radius-pill)",
+                  border: isAnnotating ? "1px solid var(--danger)" : "none",
+                  background: isAnnotating ? "rgba(255, 69, 58, 0.12)" : "var(--accent)",
+                  color: isAnnotating ? "var(--danger)" : "#fff",
+                  fontFamily: "var(--font-apple)",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                  boxShadow: isAnnotating ? "none" : "var(--shadow-card)",
+                  cursor: "pointer",
+                  transition: "var(--transition)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = isAnnotating
+                    ? "rgba(255, 69, 58, 0.20)"
+                    : "var(--accent-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = isAnnotating
+                    ? "rgba(255, 69, 58, 0.12)"
+                    : "var(--accent)";
+                }}
               >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  {isAnnotating
+                    ? <path d="M6 18L18 6M6 6l12 12" />
+                    : <path d="M4 20l4-1 10-10a2.121 2.121 0 00-3-3L5 16l-1 4z" />}
+                </svg>
                 {isAnnotating ? 'Exit Annotation' : 'Annotate'}
               </button>
 

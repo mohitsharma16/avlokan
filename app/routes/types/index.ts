@@ -98,6 +98,16 @@ export interface PBUser {
   avatar?: string;
 }
 
+export interface ShareLink {
+  id: string;
+  token: string;
+  revisionId: string;
+  expires: number;
+  createdBy?: string;
+  created: string;
+  updated: string;
+}
+
 export interface Notification {
   id: string;
   userId: string;

@@ -320,11 +320,16 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isAnnotating, undo, redo, deleteSelected, setAnnotationTool, fabricCanvasRef]);
 
-  const handleShareClick = (e: React.MouseEvent) => {
+  const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const link = generateShareLink(revision.id);
-    navigator.clipboard.writeText(link);
-    alert("Share link copied to clipboard!");
+    try {
+      const link = await generateShareLink(pb, revision.id, user?.email);
+      await navigator.clipboard.writeText(link);
+      alert("Share link copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to generate share link:", err);
+      alert("Failed to generate share link. Please try again.");
+    }
   };
 
   return (

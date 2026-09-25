@@ -8,14 +8,14 @@ import {
   useNavigation,
 } from "react-router-dom";
 import PocketBase from "pocketbase";
-import type { LoaderData, Revision, PBUser } from "../types";
+import type { LoaderData, Revision, PBUser, ShareLink } from "../types";
 import { useCommentEditor } from "../components/AssetCard/useCommentEditor";
 import { useAnnotations } from "../components/AssetCard/useAnnotations";
 import { useTaskAssignments } from "../hooks/useTaskAssignments";
 import CommentsPanel from "../components/AssetCard/CommentsPanel";
 import AnnotationToolbar from "../components/AssetCard/AnnotationToolbar";
 
-const pb = new PocketBase("http://127.0.0.1:8090");
+const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
 
 interface ActionData {
   errors?: {
@@ -38,9 +38,34 @@ export async function loader({
   }
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
-  const expires = Number(url.searchParams.get("expires"));
 
-  if (!token || isNaN(expires) || Date.now() > expires) {
+  // Look up the share link server-side — the token and expiry live in the
+  // "share_links" collection, not in the URL, so a reviewer can't tamper
+  // with the expiry by editing the query string.
+  let shareLink: ShareLink | null = null;
+  if (token) {
+    try {
+      await pb.admins.authWithPassword(
+        import.meta.env.VITE_SUPERADMIN_EMAIL,
+        import.meta.env.VITE_SUPERADMIN_PASSWORD,
+        { requestKey: null }
+      );
+      shareLink = await pb
+        .collection("share_links")
+        .getFirstListItem<ShareLink>(pb.filter("token = {:token}", { token }), {
+          requestKey: null,
+        });
+    } catch (err) {
+      console.error("Loader Error - Failed to validate share link:", err);
+      shareLink = null;
+    }
+  }
+
+  if (
+    !shareLink ||
+    shareLink.revisionId !== revisionId ||
+    Date.now() > Number(shareLink.expires)
+  ) {
     throw new Response(
       "The share link is invalid or has expired. Please request a new one.",
       { status: 403 }

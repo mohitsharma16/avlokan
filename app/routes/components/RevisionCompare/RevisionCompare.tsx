@@ -243,7 +243,7 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                         <div className="flex-1 flex flex-col">
                         <div style={{ padding: "8px 12px", background: "rgba(20,20,22,0.85)", backdropFilter: "blur(12px)", textAlign: "center" }}>
                                 <span style={{ color: "#F5F5F7", fontSize: 13, fontWeight: 500 }}>{revisionB.title || "Untitled"}</span>
-                                <span style={{ marginLeft: 6, background: "#30D158", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
+                                <span style={{ marginLeft: 6, background: "var(--success)", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
                                     v{revisionB.versionNumber || 1}
                                 </span>
                             </div>
@@ -298,7 +298,7 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                         <div style={{ position: "absolute", top: 12, left: 12, background: "var(--accent)", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
                             {revisionA.title || "Untitled"} (v{revisionA.versionNumber || 1})
                         </div>
-                        <div style={{ position: "absolute", top: 12, right: 12, background: "#30D158", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
+                        <div style={{ position: "absolute", top: 12, right: 12, background: "var(--success)", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
                             {revisionB.title || "Untitled"} (v{revisionB.versionNumber || 1})
                         </div>
                     </div>

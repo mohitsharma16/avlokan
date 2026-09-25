@@ -88,13 +88,14 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
             {/* Track background */}
             <div
                 ref={trackRef}
-                className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-gray-700 rounded-full cursor-pointer overflow-visible"
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full cursor-pointer overflow-visible"
+                style={{ background: "rgba(255,255,255,0.2)" }}
                 onClick={handleTrackClick}
             >
                 {/* Progress fill */}
                 <div
-                    className="absolute left-0 top-0 h-full bg-blue-500 rounded-full pointer-events-none"
-                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                    className="absolute left-0 top-0 h-full rounded-full pointer-events-none"
+                    style={{ width: `${(currentTime / duration) * 100}%`, background: "var(--accent)" }}
                 />
             </div>
 
@@ -119,10 +120,12 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                         onMouseLeave={() => setHoveredMarker(null)}
                     >
                         <div
-                            className={`w-3 h-3 rounded-full border-2 ${isActive
-                                    ? "bg-blue-400 border-blue-300 shadow-lg shadow-blue-400/50"
-                                    : "bg-blue-500 border-blue-400"
-                                }`}
+                            className="w-3 h-3 rounded-full border-2"
+                            style={{
+                                background: "var(--accent)",
+                                borderColor: isActive ? "#fff" : "var(--accent-hover)",
+                                boxShadow: isActive ? "0 0 0 4px rgba(0,113,227,0.35)" : "none",
+                            }}
                         />
                     </div>
                 );
@@ -142,7 +145,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                         }}
                         onMouseLeave={() => setHoveredMarker(null)}
                     >
-                        <div className="w-2.5 h-2.5 rounded-sm bg-amber-400 border border-amber-300 rotate-45" />
+                        <div className="w-2.5 h-2.5 rounded-sm rotate-45" style={{ background: "#FFCC00", border: "1px solid #E6B800" }} />
                     </div>
                 );
             })}

@@ -16,6 +16,12 @@ import { ThemeProvider } from "./routes/contexts/ThemeContext";
 
 export const links: Route.LinksFunction = () => [];
 
+export const meta: Route.MetaFunction = () => [
+  { name: "description", content: "Avlokan — review creative work the way it deserves. Frame-accurate annotation, timestamped feedback, and gated share links, built for creative teams." },
+  { property: "og:site_name", content: "Avlokan" },
+  { name: "theme-color", content: "#0071E3" },
+];
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">

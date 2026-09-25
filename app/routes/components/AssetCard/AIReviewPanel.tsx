@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { captureVideoFrame } from "../../utils/frameCapture";
-import { analyzeFrame } from "../../services/aiReviewService";
-import type { AIFinding, AIReviewResult } from "../../services/aiReviewService";
+import { useAIReview } from "../../hooks/useAIReview";
+import type { AIFinding } from "../../services/aiReviewService";
 
 interface AIReviewPanelProps {
     videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -20,31 +20,22 @@ const SEVERITY_CLASSES: Record<string, string> = {
     error: "bg-red-100 text-red-700 border-red-200",
 };
 
+// ── Main Panel ────────────────────────────────────────────────────────────────
+
 const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [result, setResult] = useState<AIReviewResult | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const { state, analyzeFrame, clearResult } = useAIReview();
+    const { status, result, error } = state;
+
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
         new Set(["typography", "color_contrast", "layout", "accessibility"])
     );
 
-    const handleAnalyze = useCallback(async () => {
-        if (!videoRef.current) return;
-
-        setIsAnalyzing(true);
-        setError(null);
-
-        try {
-            const frameBase64 = captureVideoFrame(videoRef.current);
-            const aiResult = await analyzeFrame(frameBase64);
-            setResult(aiResult);
-        } catch (err: any) {
-            console.error("AI analysis error:", err);
-            setError(err.message || "Failed to analyze frame.");
-        } finally {
-            setIsAnalyzing(false);
-        }
-    }, [videoRef]);
+    const handleAnalyze = useCallback(async (): Promise<void> => {
+        if (!videoRef.current || status === "analyzing") return;
+        clearResult();
+        const frameBase64 = captureVideoFrame(videoRef.current);
+        await analyzeFrame(frameBase64);
+    }, [videoRef, status, analyzeFrame, clearResult]);
 
     const toggleCategory = (cat: string) => {
         setExpandedCategories((prev) => {
@@ -63,24 +54,28 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
         }
     }
 
+    const isAnalyzing = status === "analyzing";
+
     return (
         <div className="border-t border-gray-200 mt-4 pt-4">
+            {/* ── Header ── */}
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                     <span>🤖</span>
                     <span>AI Review</span>
                 </h3>
+
                 <button
                     onClick={handleAnalyze}
                     disabled={isAnalyzing}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isAnalyzing
-                            ? "bg-gray-200 text-gray-500 cursor-wait"
-                            : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                        ? "bg-gray-200 text-gray-500 cursor-wait"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
                         }`}
                 >
                     {isAnalyzing ? (
                         <span className="flex items-center gap-1.5">
-                            <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+                            <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                             Analyzing…
                         </span>
                     ) : (
@@ -89,12 +84,15 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                 </button>
             </div>
 
+            {/* ── Error State ── */}
             {error && (
                 <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 mb-3">
+                    <span className="font-medium">Error: </span>
                     {error}
                 </div>
             )}
 
+            {/* ── Results ── */}
             {result && (
                 <div className="space-y-3">
                     {/* Summary */}
@@ -109,12 +107,14 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                         </p>
                     ) : (
                         <p className="text-[10px] text-gray-500">
-                            {result.findings.length} finding{result.findings.length !== 1 ? "s" : ""} across{" "}
-                            {Object.keys(groupedFindings).length} categor{Object.keys(groupedFindings).length !== 1 ? "ies" : "y"}
+                            {result.findings.length} finding
+                            {result.findings.length !== 1 ? "s" : ""} across{" "}
+                            {Object.keys(groupedFindings).length} categor
+                            {Object.keys(groupedFindings).length !== 1 ? "ies" : "y"}
                         </p>
                     )}
 
-                    {/* Categories */}
+                    {/* Category Cards */}
                     {Object.entries(CATEGORY_META).map(([catKey, meta]) => {
                         const findings = groupedFindings[catKey];
                         if (!findings || findings.length === 0) return null;
@@ -134,7 +134,9 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                                             {findings.length}
                                         </span>
                                     </span>
-                                    <span className="text-gray-400 text-xs">{isExpanded ? "▾" : "▸"}</span>
+                                    <span className="text-gray-400 text-xs">
+                                        {isExpanded ? "▾" : "▸"}
+                                    </span>
                                 </button>
 
                                 {isExpanded && (
@@ -143,7 +145,8 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                                             <div key={finding.id} className="p-3 space-y-1.5">
                                                 <div className="flex items-start gap-2">
                                                     <span
-                                                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border flex-shrink-0 ${SEVERITY_CLASSES[finding.severity] || SEVERITY_CLASSES.info
+                                                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border flex-shrink-0 ${SEVERITY_CLASSES[finding.severity] ||
+                                                            SEVERITY_CLASSES.info
                                                             }`}
                                                     >
                                                         {finding.severity}
@@ -156,8 +159,12 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                                                     {finding.description}
                                                 </p>
                                                 <div className="flex items-start gap-1.5">
-                                                    <span className="text-[10px] text-green-700 font-medium flex-shrink-0">💡 Fix:</span>
-                                                    <span className="text-[11px] text-green-700">{finding.suggestion}</span>
+                                                    <span className="text-[10px] text-green-700 font-medium flex-shrink-0">
+                                                        💡 Fix:
+                                                    </span>
+                                                    <span className="text-[11px] text-green-700">
+                                                        {finding.suggestion}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}

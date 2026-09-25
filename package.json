@@ -9,7 +9,6 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.0.1",
     "@monaco-editor/react": "^4.7.0",
     "@react-router/node": "^7.7.0",
     "@react-router/serve": "^7.7.0",

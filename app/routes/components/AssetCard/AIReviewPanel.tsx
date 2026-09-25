@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { captureVideoFrame } from "../../utils/frameCapture";
-import { useGemmaReview } from "../../hooks/useGemmaReview";
+import { useAIReview } from "../../hooks/useAIReview";
 import type { AIFinding } from "../../services/aiReviewService";
 
 interface AIReviewPanelProps {
@@ -20,65 +20,22 @@ const SEVERITY_CLASSES: Record<string, string> = {
     error: "bg-red-100 text-red-700 border-red-200",
 };
 
-// ── Sub‑components ────────────────────────────────────────────────────────────
-
-function ModelStatusBadge({ backend }: { backend: "webgpu" | "wasm" | null }) {
-    if (!backend) return null;
-    const isGpu = backend === "webgpu";
-    return (
-        <span
-            title={isGpu ? "Running on GPU (WebGPU)" : "Running on CPU (WebAssembly)"}
-            className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${isGpu
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-gray-100 text-gray-500 border-gray-200"
-                }`}
-        >
-            {isGpu ? "⚡ WebGPU" : "🖥 CPU"}
-        </span>
-    );
-}
-
-function DownloadProgress({ percent, message }: { percent: number; message: string }) {
-    return (
-        <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-                <span className="text-[11px] text-gray-500">{message || "Loading…"}</span>
-                <span className="text-[11px] font-medium text-gray-600">{percent}%</span>
-            </div>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                    className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                    style={{ width: `${percent}%` }}
-                />
-            </div>
-            <p className="text-[10px] text-gray-400">
-                Downloading once — cached in your browser after this.
-            </p>
-        </div>
-    );
-}
-
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
-    const { state, initModel, analyzeFrame, clearResult } = useGemmaReview();
-    const { modelStatus, downloadProgress, progressMessage, backend, result, error } = state;
+    const { state, analyzeFrame, clearResult } = useAIReview();
+    const { status, result, error } = state;
 
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
         new Set(["typography", "color_contrast", "layout", "accessibility"])
     );
 
-    // Kick off model loading as soon as the panel mounts (lazy pre-warming)
-    useEffect(() => {
-        if (modelStatus === "idle") initModel();
-    }, [modelStatus, initModel]);
-
     const handleAnalyze = useCallback(async (): Promise<void> => {
-        if (!videoRef.current || modelStatus !== "ready") return;
+        if (!videoRef.current || status === "analyzing") return;
         clearResult();
         const frameBase64 = captureVideoFrame(videoRef.current);
         await analyzeFrame(frameBase64);
-    }, [videoRef, modelStatus, analyzeFrame, clearResult]);
+    }, [videoRef, status, analyzeFrame, clearResult]);
 
     const toggleCategory = (cat: string) => {
         setExpandedCategories((prev) => {
@@ -97,37 +54,23 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
         }
     }
 
-    const isReady = modelStatus === "ready";
-    const isAnalyzing = modelStatus === "analyzing";
-    const isLoading = modelStatus === "loading";
-    const hasError = modelStatus === "error";
+    const isAnalyzing = status === "analyzing";
 
     return (
         <div className="border-t border-gray-200 mt-4 pt-4">
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                        <span>🤖</span>
-                        <span>AI Review</span>
-                    </h3>
-                    {/* On-device badge */}
-                    {isReady && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
-                            ✦ On-Device
-                        </span>
-                    )}
-                    <ModelStatusBadge backend={backend} />
-                </div>
+                <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                    <span>🤖</span>
+                    <span>AI Review</span>
+                </h3>
 
                 <button
                     onClick={handleAnalyze}
-                    disabled={!isReady || isAnalyzing}
+                    disabled={isAnalyzing}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isAnalyzing
                         ? "bg-gray-200 text-gray-500 cursor-wait"
-                        : isReady
-                            ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-                            : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
                         }`}
                 >
                     {isAnalyzing ? (
@@ -135,42 +78,18 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
                             <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                             Analyzing…
                         </span>
-                    ) : isLoading ? (
-                        "Model loading…"
                     ) : (
                         "Analyze Frame"
                     )}
                 </button>
             </div>
 
-            {/* ── Model Loading Progress ── */}
-            {isLoading && (
-                <div className="mb-3 p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg">
-                    <DownloadProgress percent={downloadProgress} message={progressMessage} />
-                </div>
-            )}
-
             {/* ── Error State ── */}
-            {(error || hasError) && (
+            {error && (
                 <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 mb-3">
                     <span className="font-medium">Error: </span>
-                    {error ?? "Something went wrong loading the model."}
-                    {hasError && (
-                        <button
-                            onClick={initModel}
-                            className="ml-2 underline text-red-600 hover:text-red-800 font-medium"
-                        >
-                            Retry
-                        </button>
-                    )}
+                    {error}
                 </div>
-            )}
-
-            {/* ── Idle hint (before model is loaded) ── */}
-            {modelStatus === "idle" && !error && (
-                <p className="text-[11px] text-gray-400 mb-3">
-                    Initializing on-device AI model…
-                </p>
             )}
 
             {/* ── Results ── */}

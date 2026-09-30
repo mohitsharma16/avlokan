@@ -3,6 +3,13 @@ import { Editor } from "@monaco-editor/react";
 import type { Comment, Annotation, PBUser, Task } from "../../types";
 import { formatTime, type Command, type TimestampPill } from "./utils";
 import MentionSuggestions from "./MentionSuggestions";
+import { useTheme } from "../../contexts/ThemeContext";
+
+/** Monaco themes that match the Avlokan surfaces (transparent so the composer card shows through). */
+const defineMonacoThemes = (monaco: any) => {
+    monaco.editor.defineTheme("avlokan-dark", { base: "vs-dark", inherit: true, rules: [], colors: { "editor.background": "#17171C", "editorCursor.foreground": "#FF6B4A", "editor.selectionBackground": "#FF6B4A44", "editor.lineHighlightBackground": "#00000000" } });
+    monaco.editor.defineTheme("avlokan-light", { base: "vs", inherit: true, rules: [], colors: { "editor.background": "#FFFFFF", "editorCursor.foreground": "#FF6B4A", "editor.selectionBackground": "#FF6B4A33", "editor.lineHighlightBackground": "#00000000" } });
+};
 
 interface CommentsPanelProps {
     comments: Comment[];
@@ -304,6 +311,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     onAssignTask,
     onCloseAssignDropdown,
 }) => {
+    const { isDark } = useTheme();
     const activeCommentRef = useRef<HTMLDivElement>(null);
     const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(
         new Set()
@@ -348,8 +356,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
         <div
             className="flex flex-col min-h-0 relative"
             style={{
-                background: "var(--bg-elevated)",
-                borderLeft: "1px solid var(--border)",
+                background: "transparent",
                 padding: 16,
                 fontFamily: "var(--font-sans)",
                 transition: "var(--transition)",
@@ -364,18 +371,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 />
             )}
 
-            <div className="flex justify-between items-center mb-4 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
-                <h2 style={{ fontSize: 15.5, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
-                    Comments ({comments.length})
-                </h2>
-                {onClose && (
-                    <button
-                        style={{ fontSize: 13, color: "var(--danger)", background: "none", border: "none", cursor: "pointer" }}
-                        onClick={onClose}
-                    >
-                        Close
-                    </button>
-                )}
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14, paddingBottom: 10, borderBottom: "1px solid var(--color-border)" }}>
+                <h2 className="av-eyebrow" style={{ margin: 0, fontSize: 11, color: "var(--color-text-primary)" }}>Comments</h2>
+                <span className="av-mono" style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>{comments.length}</span>
             </div>
 
             {/* Annotation Info */}
@@ -678,129 +676,94 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                         </div>
                     )}
 
-                    <div className="relative">
-                        <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 4, paddingLeft: 4 }}>
-                            Type{" "}
-                            <kbd style={{ padding: "1px 5px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "ui-monospace, monospace" }}>
-                                $
-                            </kbd>{" "}
-                            for commands ·{" "}
-                            <kbd style={{ padding: "1px 5px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "ui-monospace, monospace" }}>
-                                @
-                            </kbd>{" "}
-                            to mention
-                        </div>
-
-                        {/* Time Range Duration Selector */}
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>
-                                Range:
-                            </span>
-                            {[10, 30, 60, 120].map((d) => (
-                                <button
-                                    key={d}
-                                    onClick={() =>
-                                        onTimeRangeDurationChange(d)
-                                    }
-                                    style={{
-                                        padding: "1px 8px",
-                                        borderRadius: "999px",
-                                        fontSize: 10,
-                                        fontWeight: 500,
-                                        border: `1px solid ${timeRangeDuration === d ? "var(--accent)" : "var(--border)"}`,
-                                        background: timeRangeDuration === d ? "var(--accent)" : "var(--bg)",
-                                        color: timeRangeDuration === d ? "var(--color-accent-ink)" : "var(--text-secondary)",
-                                        transition: "var(--transition)",
-                                    }}
-                                >
-                                    {d}s
-                                </button>
-                            ))}
-                            <div className="flex items-center gap-1">
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={600}
-                                    value={timeRangeDuration}
-                                    onChange={(e) => {
-                                        const val = parseInt(
-                                            e.target.value,
-                                            10
-                                        );
-                                        if (
-                                            !isNaN(val) &&
-                                            val >= 1 &&
-                                            val <= 600
-                                        ) {
-                                            onTimeRangeDurationChange(val);
-                                        }
-                                    }}
-                                    style={{
-                                        width: 56,
-                                        padding: "1px 6px",
-                                        fontSize: 10,
-                                        border: "1px solid var(--border)",
-                                        borderRadius: 6,
-                                        textAlign: "center",
-                                        background: "var(--bg)",
-                                        color: "var(--text-primary)",
-                                    }}
-                                />
-                                <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
-                                    sec
-                                </span>
-                            </div>
-                        </div>
-
-                        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                    {/* ── Composer ── */}
+                    <div
+                        style={{
+                            border: "1px solid var(--color-border-strong)",
+                            borderRadius: "var(--av-radius-md)",
+                            background: "var(--color-surface)",
+                            overflow: "hidden",
+                            transition: "border-color var(--av-motion-fast) ease, box-shadow var(--av-motion-fast) ease",
+                        }}
+                        onFocusCapture={(e) => { e.currentTarget.style.borderColor = "var(--color-accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent)"; }}
+                        onBlurCapture={(e) => { e.currentTarget.style.borderColor = "var(--color-border-strong)"; e.currentTarget.style.boxShadow = "none"; }}
+                    >
+                        <div style={{ position: "relative" }}>
                             <Editor
                                 className="w-full"
-                                theme="light"
-                                height="120px"
+                                theme={isDark ? "avlokan-dark" : "avlokan-light"}
+                                beforeMount={defineMonacoThemes}
+                                height="104px"
                                 defaultLanguage="markdown"
                                 value={commentText}
                                 onChange={onEditorChange}
                                 onMount={onEditorMount}
                                 options={{
-                                    placeholder: "Write your comment...",
-                                    fontSize: 14,
+                                    fontSize: 13.5,
+                                    fontFamily: "Inter Tight, Inter, system-ui, sans-serif",
                                     minimap: { enabled: false },
                                     contextmenu: false,
-                                    guides: {
-                                        indentation: false,
-                                        bracketPairs: false,
-                                    },
+                                    guides: { indentation: false, bracketPairs: false },
                                     lineDecorationsWidth: 0,
                                     lineNumbersMinChars: 0,
                                     lineNumbers: "off",
                                     glyphMargin: false,
-                                    scrollbar: { vertical: "auto" },
+                                    scrollbar: { vertical: "auto", useShadows: false },
+                                    scrollBeyondLastLine: false,
+                                    renderLineHighlight: "none",
+                                    overviewRulerLanes: 0,
+                                    hideCursorInOverviewRuler: true,
+                                    padding: { top: 10, bottom: 10 },
                                     wordWrap: "on",
                                     folding: false,
                                 }}
                             />
+                            {!commentText && (
+                                <div aria-hidden style={{ position: "absolute", top: 10, left: 14, pointerEvents: "none", fontSize: 13.5, color: "var(--color-text-tertiary)" }}>
+                                    {replyingTo ? `Reply to ${replyingTo.name}…` : "Leave feedback on this moment…"}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer: hints + range + submit */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px", borderTop: "1px solid var(--color-border)", background: "var(--color-bg-secondary)" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                                <kbd className="av-kbd">$</kbd> commands
+                                <kbd className="av-kbd" style={{ marginLeft: 6 }}>@</kbd> mention
+                            </span>
+                            <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4 }} role="group" aria-label="Timestamp range">
+                                <span className="av-eyebrow" style={{ fontSize: 9.5, marginRight: 2 }}>Range</span>
+                                {[10, 30, 60, 120].map((d) => (
+                                    <button
+                                        key={d}
+                                        onClick={() => onTimeRangeDurationChange(d)}
+                                        aria-pressed={timeRangeDuration === d}
+                                        className="av-mono"
+                                        style={{
+                                            height: 22, padding: "0 7px", borderRadius: 6, fontSize: 10.5, cursor: "pointer",
+                                            border: `1px solid ${timeRangeDuration === d ? "var(--color-accent)" : "var(--color-border)"}`,
+                                            background: timeRangeDuration === d ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : "transparent",
+                                            color: timeRangeDuration === d ? "var(--color-accent-text)" : "var(--color-text-secondary)",
+                                        }}
+                                    >
+                                        {d}s
+                                    </button>
+                                ))}
+                                <input
+                                    type="number" min={1} max={600} value={timeRangeDuration} aria-label="Custom range in seconds"
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value, 10);
+                                        if (!isNaN(val) && val >= 1 && val <= 600) onTimeRangeDurationChange(val);
+                                    }}
+                                    className="av-mono"
+                                    style={{ width: 46, height: 22, padding: "0 4px", fontSize: 10.5, textAlign: "center", border: "1px solid var(--color-border)", borderRadius: 6, background: "var(--color-surface)", color: "var(--color-text-primary)" }}
+                                />
+                            </span>
                         </div>
                     </div>
 
-                    <button
-                        className="w-full mt-2"
-                        style={{
-                            background: "var(--accent)",
-                            color: "var(--color-accent-ink)",
-                            padding: "8px 12px",
-                            borderRadius: "var(--radius-md)",
-                            fontWeight: 500,
-                            fontSize: 13,
-                            border: "none",
-                            boxShadow: "var(--shadow-card)",
-                            transition: "var(--transition)",
-                            cursor: "pointer",
-                        }}
-                        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--accent-hover)")}
-                        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--accent)")}
-                        onClick={onSubmit}
-                    >
-                        {replyingTo ? "Post Reply" : "Post Comment"}
+                    <button className="av-btn av-btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={onSubmit}>
+                        {replyingTo ? "Post reply" : "Post comment"}
                     </button>
                 </div>
             </div>

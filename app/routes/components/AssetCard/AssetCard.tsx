@@ -14,8 +14,9 @@ import AIReviewPanel from "./AIReviewPanel";
 import VideoTimeline from "./VideoTimeline";
 import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp";
 import { generateShareLink } from "./utils";
+import { Badge, type Status } from "../design";
 
-const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
+const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) => {
   const { user, pb } = useAuth();
   const videoUrl = revision.video
     ? pb.files.getURL(revision, revision.video)
@@ -334,6 +335,18 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     }
   };
 
+  // Review-level status derived from this revision's tasks
+  const taskCounts = {
+    open: tasks.filter((t: any) => t.status === "open").length,
+    in_progress: tasks.filter((t: any) => t.status === "in_progress").length,
+    done: tasks.filter((t: any) => t.status === "done").length,
+  };
+  const reviewStatus: Status =
+    tasks.length === 0 ? "in_review"
+    : taskCounts.done === tasks.length ? "resolved"
+    : taskCounts.in_progress > 0 ? "in_progress"
+    : "changes_requested";
+
   return (
     <>
       <article
@@ -378,101 +391,116 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
       </article>
 
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(5,5,7,0.8)", backdropFilter: "blur(6px)", display: "flex", alignItems: "stretch" }}>
-          <div style={{ position: "relative", background: "var(--bg-elevated)", width: "100%", height: "100%", display: "flex" }}>
-            <div className="flex-1 bg-black relative" ref={containerRef}>
-              {videoUrl && (
-                <>
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-contain"
-                    style={{ position: 'relative', zIndex: 1 }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      zIndex: 10,
-                      pointerEvents: isAnnotating ? 'auto' : 'none',
-                    }}
-                  >
-                    <canvas
-                      ref={canvasRef}
-                    />
-                  </div>
-                </>
-              )}
+        <div role="dialog" aria-modal="true" aria-label={`Review: ${revision.title || "Untitled revision"}`} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--color-bg)", display: "flex", flexDirection: "column", fontFamily: "var(--font-sans)" }}>
+          {/* ── Review header: path · revision · status · tasks ── */}
+          <header style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 56, padding: "0 16px", borderBottom: "1px solid var(--color-border)", background: "var(--color-bg-secondary)", flexWrap: "wrap" }}>
+            <button onClick={() => setShowModal(false)} className="av-btn av-btn-secondary" aria-label="Back to revisions">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+              Back
+              <span className="av-kbd" style={{ marginLeft: 2 }}>Esc</span>
+            </button>
 
-              {/* Back to revisions — always visible, top-left */}
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-4 left-4 z-30 av-btn"
-                style={{ background: "rgba(9,9,11,0.78)", color: "#F5F5F4", border: "1px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
-                aria-label="Back to revisions"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-                Back
-                <span className="av-kbd" style={{ marginLeft: 2 }}>Esc</span>
-              </button>
+            <nav aria-label="Path" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, fontSize: 13.5, color: "var(--color-text-tertiary)" }}>
+              {[...context, revision.title || "Untitled revision"].map((c, i, arr) => (
+                <React.Fragment key={`${c}-${i}`}>
+                  {i > 0 && <span aria-hidden>/</span>}
+                  <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220, color: i === arr.length - 1 ? "var(--color-text-primary)" : undefined, fontWeight: i === arr.length - 1 ? 600 : 400 }}>{c}</span>
+                </React.Fragment>
+              ))}
+            </nav>
 
-              {/* Zoom Toolbar */}
-              <div className="absolute bottom-10 left-4 z-20 flex items-center gap-1 backdrop-blur-sm px-1.5 py-1" style={{ background: "rgba(9,9,11,0.72)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--av-radius-md)" }}>
-                <button onClick={zoomOut} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom out">−</button>
-                <span className="text-white text-xs font-mono min-w-[36px] text-center">{Math.round(zoomLevel * 100)}%</span>
-                <button onClick={zoomIn} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom in">+</button>
-                {isZoomed && (
-                  <button onClick={resetZoom} className="text-white text-xs px-1.5 py-0.5 hover:bg-white/20 rounded ml-1" title="Reset zoom">⟲</button>
-                )}
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="av-badge av-badge-plain av-mono" style={{ color: "var(--color-accent-text)", borderColor: "var(--color-accent)" }}>
+                R{String(revision.versionNumber || 1).padStart(2, "0")}
+              </span>
+              <Badge status={reviewStatus} />
+              <span className="av-mono" style={{ fontSize: 11.5, color: "var(--color-text-secondary)" }} aria-label="Task summary">
+                {tasks.length === 0
+                  ? "No tasks"
+                  : `${tasks.length} task${tasks.length !== 1 ? "s" : ""} · ${taskCounts.in_progress} in progress · ${taskCounts.done} done`}
+              </span>
+            </div>
 
-              {/* Annotation Toolbar */}
-              {isAnnotating && (
-                <AnnotationToolbar
-                  annotationTool={annotationTool}
-                  setAnnotationTool={setAnnotationTool}
-                  brushColor={brushColor}
-                  setBrushColor={setBrushColor}
-                  brushSize={brushSize}
-                  setBrushSize={setBrushSize}
-                  annotationDuration={annotationDuration}
-                  setAnnotationDuration={setAnnotationDuration}
-                  onSave={saveAnnotation}
-                  onClear={clearCurrentAnnotations}
-                  onUndo={undo}
-                  onRedo={redo}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  snapToGrid={snapToGrid}
-                  onToggleSnap={() => setSnapToGrid((p) => !p)}
-                  gridSize={gridSize}
-                  onGridSizeChange={setGridSize}
-                  cursorPosition={cursorPosition}
-                  shapeSize={shapeSize}
-                />
-              )}
-
-              {/* Annotation Toggle Button */}
-              <button
-                onClick={toggleAnnotating}
-                className={`absolute top-4 right-4 z-20 av-btn av-anim-scale-in ${isAnnotating ? "av-btn-danger" : "av-btn-primary"}`}
-                aria-pressed={isAnnotating}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  {isAnnotating
-                    ? <path d="M6 18L18 6M6 6l12 12" />
-                    : <path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 00-3-3L5 16l-1 4z" />}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={handleShareClick} className="av-btn av-btn-secondary av-btn-sm">Share</button>
+              <button onClick={toggleAnnotating} className={`av-btn av-btn-sm ${isAnnotating ? "av-btn-danger" : "av-btn-primary"}`} aria-pressed={isAnnotating}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  {isAnnotating ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 00-3-3L5 16l-1 4z" />}
                 </svg>
                 {isAnnotating ? "Exit annotation" : "Annotate"}
               </button>
+            </div>
+          </header>
 
-              {/* Video Timeline with markers */}
-              <div className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-1">
+          <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+            {/* ── Left: frame + docked timeline ── */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <div className="flex-1 bg-black relative" ref={containerRef} style={{ minHeight: 0 }}>
+                {videoUrl && (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                      style={{ position: 'relative', zIndex: 1 }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 10,
+                        pointerEvents: isAnnotating ? 'auto' : 'none',
+                      }}
+                    >
+                      <canvas ref={canvasRef} />
+                    </div>
+                  </>
+                )}
+
+                {/* Zoom Toolbar */}
+                <div className="absolute bottom-14 left-4 z-20 flex items-center gap-1 backdrop-blur-sm px-1.5 py-1" style={{ background: "rgba(9,9,11,0.72)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--av-radius-md)" }}>
+                  <button onClick={zoomOut} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom out" aria-label="Zoom out">−</button>
+                  <span className="text-white text-xs font-mono min-w-[36px] text-center">{Math.round(zoomLevel * 100)}%</span>
+                  <button onClick={zoomIn} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom in" aria-label="Zoom in">+</button>
+                  {isZoomed && (
+                    <button onClick={resetZoom} className="text-white text-xs px-1.5 py-0.5 hover:bg-white/20 rounded ml-1" title="Reset zoom" aria-label="Reset zoom">Reset</button>
+                  )}
+                </div>
+
+                {/* Annotation Toolbar */}
+                {isAnnotating && (
+                  <AnnotationToolbar
+                    annotationTool={annotationTool}
+                    setAnnotationTool={setAnnotationTool}
+                    brushColor={brushColor}
+                    setBrushColor={setBrushColor}
+                    brushSize={brushSize}
+                    setBrushSize={setBrushSize}
+                    annotationDuration={annotationDuration}
+                    setAnnotationDuration={setAnnotationDuration}
+                    onSave={saveAnnotation}
+                    onClear={clearCurrentAnnotations}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    snapToGrid={snapToGrid}
+                    onToggleSnap={() => setSnapToGrid((p) => !p)}
+                    gridSize={gridSize}
+                    onGridSizeChange={setGridSize}
+                    cursorPosition={cursorPosition}
+                    shapeSize={shapeSize}
+                  />
+                )}
+              </div>
+
+              {/* Docked timeline: playhead, comment + annotation markers */}
+              <div style={{ borderTop: "1px solid var(--color-border)", background: "var(--color-bg-secondary)", padding: "10px 16px 12px" }}>
                 <VideoTimeline
                   videoRef={videoRef}
                   comments={comments}
@@ -483,11 +511,12 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </div>
             </div>
 
+            {/* ── Right: comments + AI review ── */}
             <div
               style={{
                 width: `${sidebarWidth}px`,
-                background: "var(--bg-elevated)",
-                borderLeft: "1px solid var(--border)",
+                background: "var(--color-bg-secondary)",
+                borderLeft: "1px solid var(--color-border)",
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 0,
@@ -505,7 +534,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   commentText={commentText}
                   timeRangeDuration={timeRangeDuration}
                   onTimeRangeDurationChange={setTimeRangeDuration}
-                  onClose={() => setShowModal(false)}
                   onResizeStart={handleResizeStart}
                   onSeekToTimestamp={seekToTimestamp}
                   onExecuteCommand={executeCommand}
@@ -539,7 +567,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </div>
             </div>
           </div>
-        </div >
+        </div>
       )}
 
       {/* Keyboard Shortcuts Help Overlay */}

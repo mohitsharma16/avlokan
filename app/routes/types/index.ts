@@ -77,6 +77,8 @@ export interface Annotation {
 
 export interface AssetCardProps {
   revision: AssetRevision;
+  /** Breadcrumb shown in the review header, e.g. [client, project, asset]. */
+  context?: string[];
 }
 
 export interface Task {

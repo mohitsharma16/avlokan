@@ -350,7 +350,7 @@ const Home: React.FC = () => {
                             </span>
                           </button>
                         )}
-                        <AssetCard revision={revision} />
+                        <AssetCard revision={revision} context={[selectedClientRec?.name, selectedProjectRec?.name, selectedAssetRec?.name].filter(Boolean) as string[]} />
                       </div>
                     );
                   })}

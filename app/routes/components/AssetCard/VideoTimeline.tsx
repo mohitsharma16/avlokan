@@ -83,13 +83,30 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
         label: `Annotation by ${a.createdBy || "unknown"}`,
     }));
 
+    const fmt = (t: number) => {
+        const m = Math.floor(t / 60);
+        const sec = Math.floor(t % 60);
+        return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    };
+
     return (
+        <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
+                <span className="av-eyebrow" style={{ fontSize: 10 }}>Timeline</span>
+                <span className="av-mono" style={{ fontSize: 12, color: "var(--color-text-primary)" }}>
+                    {fmt(currentTime)} <span style={{ color: "var(--color-text-tertiary)" }}>/ {fmt(duration)}</span>
+                </span>
+                <span style={{ marginLeft: "auto", display: "inline-flex", gap: 14, fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><i aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent)" }} />{commentMarkers.length} comment{commentMarkers.length !== 1 ? "s" : ""}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><i aria-hidden style={{ width: 7, height: 7, transform: "rotate(45deg)", borderRadius: 1, background: "var(--color-accent-soft)" }} />{annotationMarkers.length} annotation{annotationMarkers.length !== 1 ? "s" : ""}</span>
+                </span>
+            </div>
         <div className="relative w-full select-none" style={{ height: 32 }}>
             {/* Track background */}
             <div
                 ref={trackRef}
-                className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full cursor-pointer overflow-visible"
-                style={{ background: "rgba(255,255,255,0.2)" }}
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full cursor-pointer overflow-visible"
+                style={{ background: "var(--color-bg-tertiary)", border: "1px solid var(--color-border)", height: 10, backgroundImage: "repeating-linear-gradient(90deg, var(--color-border-strong) 0 1px, transparent 1px 24px)" }}
                 onClick={handleTrackClick}
             >
                 {/* Progress fill */}
@@ -98,6 +115,9 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                     style={{ width: `${(currentTime / duration) * 100}%`, background: "var(--accent)" }}
                 />
             </div>
+
+            {/* Playhead */}
+            <div aria-hidden className="absolute pointer-events-none" style={{ left: `${(currentTime / duration) * 100}%`, top: 2, bottom: 2, width: 2, marginLeft: -1, background: "var(--color-accent)", borderRadius: 2, zIndex: 5 }} />
 
             {/* Comment markers */}
             {commentMarkers.map((m) => {
@@ -123,7 +143,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                             className="w-3 h-3 rounded-full border-2"
                             style={{
                                 background: "var(--accent)",
-                                borderColor: isActive ? "#fff" : "var(--accent-hover)",
+                                borderColor: isActive ? "var(--color-text-primary)" : "var(--accent-hover)",
                                 boxShadow: isActive ? "0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent)" : "none",
                             }}
                         />
@@ -145,7 +165,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                         }}
                         onMouseLeave={() => setHoveredMarker(null)}
                     >
-                        <div className="w-2.5 h-2.5 rounded-sm rotate-45" style={{ background: "#FFCC00", border: "1px solid #E6B800" }} />
+                        <div className="w-2.5 h-2.5 rounded-sm rotate-45" style={{ background: "var(--color-accent-soft)", border: "1px solid var(--color-accent)" }} />
                     </div>
                 );
             })}
@@ -165,6 +185,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                     {hoveredMarker.label}
                 </div>
             )}
+        </div>
         </div>
     );
 };

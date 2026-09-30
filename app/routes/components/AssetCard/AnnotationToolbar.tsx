@@ -200,7 +200,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
             className="av-anim-scale-in"
             style={{
                 position: "absolute",
-                top: 64,
+                top: 16,
                 left: 16,
                 zIndex: 20,
                 display: "flex",

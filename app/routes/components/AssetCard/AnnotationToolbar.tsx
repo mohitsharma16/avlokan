@@ -87,9 +87,9 @@ const SWATCHES = [
     "#FF9500", // orange
     "#FFCC00", // yellow
     "#34C759", // green
-    "#0071E3", // accent blue
-    "#5856D6", // purple
-    "#FF2D55", // pink
+    "#FF6B4A", // accent
+    "#4DA3FF", // blue
+    "#F5F5F4", // white
     "#1D1D1F", // near-black
 ];
 
@@ -135,6 +135,8 @@ const IconBtn: React.FC<IconBtnProps> = ({ onClick, active, disabled, title, chi
         onClick={onClick}
         disabled={disabled}
         title={title}
+        aria-label={title}
+        aria-pressed={active}
         style={{
             display: "flex",
             alignItems: "center",
@@ -148,11 +150,11 @@ const IconBtn: React.FC<IconBtnProps> = ({ onClick, active, disabled, title, chi
             color: disabled
                 ? "var(--text-tertiary)"
                 : active
-                    ? "#fff"
+                    ? "var(--color-accent-ink)"
                     : "var(--text-secondary)",
             opacity: disabled ? 0.4 : 1,
             cursor: disabled ? "not-allowed" : "pointer",
-            boxShadow: active ? "0 2px 8px rgba(0, 113, 227, 0.35)" : "none",
+            boxShadow: active ? "0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent)" : "none",
             transition: "var(--transition)",
         }}
         onMouseEnter={(e) => {
@@ -195,7 +197,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
 
     return (
         <div
-            className="animate-apple-scale-in"
+            className="av-anim-scale-in"
             style={{
                 position: "absolute",
                 top: 16,
@@ -207,13 +209,13 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                 flexWrap: "wrap",
                 maxWidth: "calc(100% - 32px)",
                 padding: "8px 10px",
-                background: "var(--surface)",
-                backdropFilter: "blur(20px) saturate(1.8)",
-                WebkitBackdropFilter: "blur(20px) saturate(1.8)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-xl)",
-                boxShadow: "var(--shadow-hover)",
-                fontFamily: "var(--font-apple)",
+                background: "color-mix(in srgb, var(--color-surface) 92%, transparent)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid var(--color-border-strong)",
+                borderRadius: "var(--av-radius-md)",
+                boxShadow: "var(--av-shadow-soft)",
+                fontFamily: "var(--font-sans)",
             }}
         >
             {/* Drawing tools */}
@@ -234,7 +236,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                 onClick={() => setAnnotationTool("text")}
                 title="Text (T)"
             >
-                <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-apple)" }}>T</span>
+                <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-sans)" }}>T</span>
             </IconBtn>
 
             <Divider />
@@ -280,7 +282,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                         border: isCustomColor ? "2px solid var(--accent)" : "1.5px dashed var(--text-tertiary)",
                         background: isCustomColor
                             ? brushColor
-                            : "conic-gradient(from 0deg, #FF3B30, #FFCC00, #34C759, #0071E3, #5856D6, #FF2D55, #FF3B30)",
+                            : "conic-gradient(from 0deg, #FF3B30, #FFCC00, #34C759, #FF6B4A, #4DA3FF, #F5F5F4, #FF3B30)",
                         cursor: "pointer",
                         padding: 0,
                         flexShrink: 0,
@@ -387,7 +389,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                 >
                     {cursorPosition.x},{cursorPosition.y}
                     {shapeSize && (
-                        <span style={{ marginLeft: 4, color: "var(--accent)" }}>
+                        <span style={{ marginLeft: 4, color: "var(--color-accent-text)" }}>
                             {shapeSize.w}×{shapeSize.h}
                         </span>
                     )}
@@ -406,9 +408,9 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                     gap: 5,
                     padding: "6px 12px",
                     background: "var(--accent)",
-                    color: "#fff",
+                    color: "var(--color-accent-ink)",
                     border: "none",
-                    borderRadius: "var(--radius-pill)",
+                    borderRadius: "var(--av-radius-sm)",
                     fontSize: 12.5,
                     fontWeight: 500,
                     cursor: "pointer",
@@ -433,7 +435,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                     background: "transparent",
                     color: "var(--danger)",
                     border: "1.5px solid transparent",
-                    borderRadius: "var(--radius-pill)",
+                    borderRadius: "var(--av-radius-sm)",
                     fontSize: 12.5,
                     fontWeight: 500,
                     cursor: "pointer",
@@ -441,7 +443,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                     transition: "var(--transition)",
                 }}
                 onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(255, 69, 58, 0.1)";
+                    (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--danger) 10%, transparent)";
                     (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--danger)";
                 }}
                 onMouseLeave={(e) => {

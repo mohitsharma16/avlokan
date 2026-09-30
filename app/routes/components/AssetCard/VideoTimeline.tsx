@@ -124,7 +124,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                             style={{
                                 background: "var(--accent)",
                                 borderColor: isActive ? "#fff" : "var(--accent-hover)",
-                                boxShadow: isActive ? "0 0 0 4px rgba(0,113,227,0.35)" : "none",
+                                boxShadow: isActive ? "0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent)" : "none",
                             }}
                         />
                     </div>
@@ -160,7 +160,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                     }}
                 >
                     <span className="mr-1">
-                        {hoveredMarker.type === "comment" ? "💬" : "🖊"}
+                        {hoveredMarker.type === "comment" ? "Comment" : "Annotation"} ·
                     </span>
                     {hoveredMarker.label}
                 </div>

@@ -334,28 +334,14 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
 
   return (
     <>
-      <div
+      <article
         onClick={() => setShowModal(true)}
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-card)",
-          overflow: "hidden",
-          cursor: "pointer",
-          transition: "var(--transition)",
-          fontFamily: "var(--font-apple)",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-hover)";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-card)";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        }}
+        className="av-surface av-surface-interactive"
+        role="button" tabIndex={0} aria-label={`Open review: ${revision.title || "Untitled revision"}`}
+        onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); setShowModal(true); } }}
+        style={{ overflow: "hidden", cursor: "pointer", fontFamily: "var(--font-sans)" }}
       >
-        <div style={{ width: "100%", aspectRatio: "16/9", background: "var(--bg)" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", background: "var(--color-bg-tertiary)" }}>
           {videoUrl && (
             <video
               src={videoUrl}
@@ -364,58 +350,33 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               onClick={(e) => e.stopPropagation()}
             />
           )}
+          <span className="av-badge av-badge-plain av-mono" style={{ position: "absolute", top: 10, left: 10, background: "rgba(9,9,11,0.72)", color: "#F5F5F4", borderColor: "rgba(255,255,255,0.16)", backdropFilter: "blur(6px)", pointerEvents: "none" }}>
+            R{String(revision.versionNumber || 1).padStart(2, "0")}
+          </span>
         </div>
-        <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {revision.title || "Untitled Revision"}
-          </h3>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-              {new Date(revision.created).toLocaleString()}
-            </span>
-            <span style={{
-              background: "rgba(48,209,88,0.12)",
-              color: "#30D158",
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "3px 8px",
-              borderRadius: "var(--radius-pill)",
-            }}>
-              v{revision.versionNumber || 1}
-            </span>
-          </div>
-          {!!revision.description && (
-            <div
-              style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: "1.5" }}
-              dangerouslySetInnerHTML={{ __html: revision.description }}
-            />
-          )}
-          <div style={{ paddingTop: 4 }}>
-            <button
-              onClick={handleShareClick}
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "var(--accent)",
-                background: "rgba(0,113,227,0.08)",
-                border: "none",
-                borderRadius: "var(--radius-pill)",
-                padding: "5px 14px",
-                cursor: "pointer",
-                transition: "var(--transition)",
-                fontFamily: "var(--font-apple)",
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.15)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.08)")}
-            >
+        <div style={{ padding: "14px 16px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, letterSpacing: "-0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {revision.title || "Untitled revision"}
+            </h3>
+            <button onClick={handleShareClick} className="av-btn av-btn-ghost av-btn-sm" style={{ flexShrink: 0, color: "var(--color-accent-text)" }} aria-label="Copy share link">
               Share
             </button>
           </div>
+          <time className="av-mono" style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+            {new Date(revision.created).toLocaleString()}
+          </time>
+          {!!revision.description && (
+            <div
+              style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5, maxHeight: 60, overflow: "hidden" }}
+              dangerouslySetInnerHTML={{ __html: revision.description }}
+            />
+          )}
         </div>
-      </div>
+      </article>
 
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "stretch" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(5,5,7,0.8)", backdropFilter: "blur(6px)", display: "flex", alignItems: "stretch" }}>
           <div style={{ position: "relative", background: "var(--bg-elevated)", width: "100%", height: "100%", display: "flex" }}>
             <div className="flex-1 bg-black relative" ref={containerRef}>
               {videoUrl && (
@@ -447,7 +408,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               )}
 
               {/* Zoom Toolbar */}
-              <div className="absolute bottom-10 left-4 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1">
+              <div className="absolute bottom-10 left-4 z-20 flex items-center gap-1 backdrop-blur-sm px-1.5 py-1" style={{ background: "rgba(9,9,11,0.72)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--av-radius-md)" }}>
                 <button onClick={zoomOut} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom out">−</button>
                 <span className="text-white text-xs font-mono min-w-[36px] text-center">{Math.round(zoomLevel * 100)}%</span>
                 <button onClick={zoomIn} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom in">+</button>
@@ -485,43 +446,15 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               {/* Annotation Toggle Button */}
               <button
                 onClick={toggleAnnotating}
-                className="absolute top-4 right-4 z-20 animate-apple-scale-in"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "9px 16px",
-                  borderRadius: "var(--radius-pill)",
-                  border: isAnnotating ? "1px solid var(--danger)" : "none",
-                  background: isAnnotating ? "rgba(255, 69, 58, 0.12)" : "var(--accent)",
-                  color: isAnnotating ? "var(--danger)" : "#fff",
-                  fontFamily: "var(--font-apple)",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  letterSpacing: "-0.01em",
-                  boxShadow: isAnnotating ? "none" : "var(--shadow-card)",
-                  cursor: "pointer",
-                  transition: "var(--transition)",
-                  backdropFilter: "blur(20px)",
-                  WebkitBackdropFilter: "blur(20px)",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = isAnnotating
-                    ? "rgba(255, 69, 58, 0.20)"
-                    : "var(--accent-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = isAnnotating
-                    ? "rgba(255, 69, 58, 0.12)"
-                    : "var(--accent)";
-                }}
+                className={`absolute top-4 right-4 z-20 av-btn av-anim-scale-in ${isAnnotating ? "av-btn-danger" : "av-btn-primary"}`}
+                aria-pressed={isAnnotating}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                   {isAnnotating
                     ? <path d="M6 18L18 6M6 6l12 12" />
-                    : <path d="M4 20l4-1 10-10a2.121 2.121 0 00-3-3L5 16l-1 4z" />}
+                    : <path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 00-3-3L5 16l-1 4z" />}
                 </svg>
-                {isAnnotating ? 'Exit Annotation' : 'Annotate'}
+                {isAnnotating ? "Exit annotation" : "Annotate"}
               </button>
 
               {/* Video Timeline with markers */}

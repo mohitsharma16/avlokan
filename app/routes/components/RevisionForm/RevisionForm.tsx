@@ -1,10 +1,16 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { Modal } from "../design";
 
 interface RevisionFormProps {
   assetId: string;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 const RevisionForm: React.FC<RevisionFormProps> = ({ assetId, onClose, onSuccess }) => {
@@ -13,12 +19,26 @@ const RevisionForm: React.FC<RevisionFormProps> = ({ assetId, onClose, onSuccess
   const [description, setDescription] = useState("");
   const [video, setVideo] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const pickFile = (file?: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("video/")) {
+      setError("That doesn't look like a video file.");
+      return;
+    }
+    setError(null);
+    setVideo(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !video || !assetId) return;
 
     setLoading(true);
+    setError(null);
     try {
       const asset = await pb.collection("assets").getOne(assetId, { expand: "revision_assets" });
       const revisions = asset?.expand?.revision_assets ?? [];
@@ -44,163 +64,80 @@ const RevisionForm: React.FC<RevisionFormProps> = ({ assetId, onClose, onSuccess
       onClose();
     } catch (err) {
       console.error("Upload or relation mapping failed", err);
+      setError("Upload failed. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const canSubmit = !!title && !!video && !loading;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.4)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        padding: 24,
-        fontFamily: "var(--font-apple)",
-      }}
-      onClick={onClose}
-    >
-      <form
-        onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="animate-apple-scale-in"
-        style={{
-          width: "100%",
-          maxWidth: 480,
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-xl)",
-          boxShadow: "var(--shadow-modal)",
-          padding: "36px 32px 28px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: 0 }}>
-            Upload Revision
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: "50%",
-              border: "none",
-              background: "var(--bg)",
-              color: "var(--text-secondary)",
-              fontSize: 18,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            ×
-          </button>
+    <Modal open onClose={loading ? () => {} : onClose} title="New revision" maxWidth={520}>
+      <form onSubmit={handleSubmit} style={{ padding: "26px 28px 24px", fontFamily: "var(--font-sans)" }}>
+        <p className="av-eyebrow" style={{ margin: 0, fontSize: 11 }}>New revision</p>
+        <h2 style={{ fontSize: 22, fontWeight: 650, letterSpacing: "-0.03em", margin: "6px 0 22px" }}>Upload the next version</h2>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Drop zone */}
+          <div>
+            <span className="av-label">Video</span>
+            <div
+              role="button" tabIndex={0} aria-label="Choose a video file"
+              onClick={() => fileInput.current?.click()}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), fileInput.current?.click())}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files?.[0]); }}
+              style={{ cursor: "pointer", padding: video ? "14px 16px" : "28px 16px", textAlign: video ? "left" : "center", borderRadius: "var(--av-radius-md)", border: `1.5px dashed ${dragging ? "var(--color-accent)" : "var(--color-border-strong)"}`, background: dragging ? "color-mix(in srgb, var(--color-accent) 7%, transparent)" : "var(--color-bg-secondary)", transition: "var(--transition)" }}
+            >
+              {video ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span aria-hidden style={{ width: 36, height: 36, borderRadius: "var(--av-radius-sm)", background: "var(--color-bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-accent-text)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M10 9.5v5l4.5-2.5z" /></svg>
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 550, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{video.name}</span>
+                    <span className="av-mono" style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>{formatBytes(video.size)} · click to replace</span>
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 550 }}>Drop a video here, or <span style={{ color: "var(--color-accent-text)" }}>browse</span></p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--color-text-tertiary)" }}>MP4, MOV or WebM</p>
+                </>
+              )}
+              <input ref={fileInput} type="file" accept="video/*" required={!video} onChange={(e) => pickFile(e.target.files?.[0])} style={{ display: "none" }} />
+            </div>
+          </div>
+
+          <div>
+            <label className="av-label" htmlFor="rev-title">Title</label>
+            <input id="rev-title" className="av-input" type="text" placeholder="e.g. Colour-graded cut" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
+
+          <div>
+            <label className="av-label" htmlFor="rev-desc">Notes <span style={{ color: "var(--color-text-tertiary)", fontWeight: 400 }}>(optional)</span></label>
+            <textarea id="rev-desc" className="av-input" rows={3} placeholder="What changed in this version?" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+
+          {error && (
+            <p role="alert" style={{ margin: 0, padding: "10px 14px", borderRadius: "var(--av-radius-md)", fontSize: 13, color: "var(--color-danger)", background: "color-mix(in srgb, var(--color-danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-danger) 28%, transparent)" }}>{error}</p>
+          )}
+
+          {loading && (
+            <div role="status" aria-label="Uploading" style={{ height: 3, borderRadius: 3, background: "var(--color-bg-tertiary)", overflow: "hidden" }}>
+              <div className="av-skeleton" style={{ height: "100%", borderRadius: 3, background: "linear-gradient(100deg, var(--color-accent) 30%, var(--color-accent-soft) 50%, var(--color-accent) 70%)", backgroundSize: "200% 100%" }} />
+            </div>
+          )}
         </div>
 
-        {/* Title */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>Title</label>
-          <input
-            type="text"
-            placeholder="e.g. Final Cut v2"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="apple-input"
-          />
-        </div>
-
-        {/* Description */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
-            Description <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(optional)</span>
-          </label>
-          <textarea
-            placeholder="What changed in this revision?"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="apple-input"
-            style={{ resize: "vertical" }}
-          />
-        </div>
-
-        {/* File upload */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>Video file</label>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              padding: "16px",
-              borderRadius: "var(--radius-md)",
-              border: `2px dashed ${video ? "var(--accent)" : "var(--border)"}`,
-              background: video ? "rgba(0,113,227,0.04)" : "transparent",
-              cursor: "pointer",
-              transition: "var(--transition)",
-            }}
-          >
-            <input
-              type="file"
-              accept="video/*"
-              onChange={(e) => setVideo(e.target.files?.[0] || null)}
-              required
-              style={{ display: "none" }}
-            />
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} style={{ color: "var(--accent)" }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <span style={{ fontSize: 13, color: video ? "var(--accent)" : "var(--text-secondary)" }}>
-              {video ? video.name : "Click to select video…"}
-            </span>
-          </label>
-        </div>
-
-        {/* Actions */}
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "9px 20px",
-              borderRadius: "var(--radius-pill)",
-              border: "1.5px solid var(--border)",
-              background: "transparent",
-              color: "var(--text-secondary)",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "var(--transition)",
-              fontFamily: "var(--font-apple)",
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="apple-btn-primary"
-            style={{ padding: "9px 24px", fontSize: 14 }}
-          >
-            {loading ? "Uploading…" : "Upload"}
-          </button>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
+          <button type="button" className="av-btn av-btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+          <button type="submit" className="av-btn av-btn-primary" disabled={!canSubmit}>{loading ? "Uploading…" : "Upload revision"}</button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 };
 

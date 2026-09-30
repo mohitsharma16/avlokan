@@ -5,6 +5,7 @@ import AssetCard from "../components/AssetCard/AssetCard";
 import type { AssetRevision } from "../types";
 import Header from "../components/Header/Header";
 import RevisionForm from "../components/RevisionForm/RevisionForm";
+import { Modal } from "../components/design";
 import RevisionCompare from "../components/RevisionCompare/RevisionCompare";
 import AssetTimeline from "../components/AssetTimeline/AssetTimeline";
 import { useAuth } from "../contexts/AuthContext";
@@ -39,24 +40,48 @@ function initials(name = "") {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
 
-// ── Reusable section heading ──
-const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h2
-    style={{
-      fontSize: 22,
-      fontWeight: 700,
-      letterSpacing: "-0.03em",
-      color: "var(--text-primary)",
-      marginBottom: 16,
-      fontFamily: "var(--font-apple)",
-    }}
-  >
+// ── Section heading: index + title + count, actions on the right ──
+const Section: React.FC<{ index: string; title: string; count?: number; actions?: React.ReactNode; children: React.ReactNode }> = ({ index, title, count, actions, children }) => (
+  <section aria-labelledby={`sec-${title}`} className="av-anim-fade-in">
+    <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+      <span className="av-mono" style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{index}</span>
+      <h2 id={`sec-${title}`} style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.025em" }}>{title}</h2>
+      {count !== undefined && <span className="av-mono" style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{count}</span>}
+      <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{actions}</div>
+    </div>
     {children}
-  </h2>
+  </section>
 );
 
+const SkeletonGrid: React.FC = () => (
+  <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }} aria-busy="true" aria-label="Loading revisions">
+    {[0, 1, 2].map((i) => (
+      <div key={i} className="av-surface" style={{ padding: 12 }}>
+        <div className="av-skeleton" style={{ aspectRatio: "16/9" }} />
+        <div className="av-skeleton" style={{ height: 14, width: "60%", marginTop: 14 }} />
+        <div className="av-skeleton" style={{ height: 12, width: "40%", marginTop: 8 }} />
+      </div>
+    ))}
+  </div>
+);
+
+const Empty: React.FC<{ title: string; hint: string; action?: React.ReactNode }> = ({ title, hint, action }) => (
+  <div style={{ padding: "56px 24px", border: "1px dashed var(--color-border-strong)", borderRadius: "var(--av-radius-lg)", textAlign: "center" }}>
+    <p style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em" }}>{title}</p>
+    <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--color-text-secondary)" }}>{hint}</p>
+    {action && <div style={{ marginTop: 20 }}>{action}</div>}
+  </div>
+);
+
+const selectableStyle = (selected: boolean): React.CSSProperties => ({
+  textAlign: "left", font: "inherit", color: "inherit", cursor: "pointer",
+  background: selected ? "color-mix(in srgb, var(--color-accent) 7%, var(--color-surface))" : "var(--color-surface)",
+  border: `1px solid ${selected ? "var(--color-accent)" : "var(--color-border)"}`,
+  boxShadow: selected ? "0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent)" : "none",
+});
+
 const Home: React.FC = () => {
-  const { pb } = useAuth();
+  const { pb, user } = useAuth();
 
   const [clients, setClients] = useState<RecordModel[]>([]);
   const [projects, setProjects] = useState<RecordModel[]>([]);
@@ -153,467 +178,223 @@ const Home: React.FC = () => {
     setTimeout(() => setSelectedAsset(currentAsset), 0);
   };
 
-  return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "var(--font-apple)" }}>
-      <Header />
+  const selectedClientRec = clients.find((c) => c.id === selectedClient);
+  const selectedProjectRec = projects.find((p) => p.id === selectedProject);
+  const selectedAssetRec = assets.find((a) => a.id === selectedAsset);
+  const firstName = ((user?.name as string) || (user?.email as string) || "").split(/[ @]/)[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px", display: "flex", flexDirection: "column", gap: 56 }}>
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", fontFamily: "var(--font-sans)" }}>
+      <Header context={[selectedClientRec?.name, selectedProjectRec?.name, selectedAssetRec?.name].filter(Boolean) as string[]} />
+
+      <main style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 24px 120px", display: "flex", flexDirection: "column", gap: 56 }}>
+        <div>
+          <p className="av-eyebrow" style={{ marginBottom: 10 }}>Workspace</p>
+          <h1 style={{ margin: 0, fontSize: "clamp(30px, 4vw, 44px)", fontWeight: 650, letterSpacing: "-0.04em", lineHeight: 1.05 }}>
+            {greeting}{firstName ? `, ${firstName}` : ""}.
+          </h1>
+          <p style={{ margin: "10px 0 0", fontSize: 15, color: "var(--color-text-secondary)" }}>
+            Pick a client, project and asset to review its revisions.
+          </p>
+        </div>
 
         {/* ── Clients ── */}
-        <section>
-          <SectionHeading>Clients</SectionHeading>
+        <Section index="01" title="Clients" count={clients.length}>
+          {clients.length === 0 ? (
+            <Empty title="No clients yet." hint="Clients you have access to will show up here." />
+          ) : (
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+              {clients.map((client) => {
+                const isSelected = selectedClient === client.id;
+                const previewText = stripMarkdown((client as any).description ?? "");
+                const avatar = (client as any).avatar;
+                const avatarSrc = avatar ? avatarUrl(pb, "clients", client.id, avatar) : "";
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {clients.map((client) => {
-              const isSelected = selectedClient === client.id;
-              const previewText = stripMarkdown((client as any).description ?? "");
-              const avatar = (client as any).avatar;
-              const avatarSrc = avatar ? avatarUrl(pb, "clients", client.id, avatar) : "";
-
-              return (
-                <div
-                  key={client.id}
-                  onClick={() => setSelectedClient(client.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 16,
-                    padding: "18px 20px",
-                    borderRadius: "var(--radius-lg)",
-                    cursor: "pointer",
-                    background: isSelected ? "rgba(0,113,227,0.07)" : "var(--bg-elevated)",
-                    border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
-                    boxShadow: isSelected ? "0 0 0 3px rgba(0,113,227,0.12)" : "var(--shadow-card)",
-                    transition: "var(--transition)",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-hover)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = isSelected
-                      ? "0 0 0 3px rgba(0,113,227,0.12)"
-                      : "var(--shadow-card)";
-                  }}
-                >
-                  {/* Avatar */}
-                  {avatarSrc ? (
-                    <img
-                      src={avatarSrc}
-                      alt={client.name}
-                      style={{
-                        width: 64,
-                        height: 64,
-                        objectFit: "cover",
-                        borderRadius: 12,
-                        flexShrink: 0,
-                        border: "1px solid var(--border)",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 12,
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: isSelected ? "var(--accent)" : "var(--bg)",
-                        color: isSelected ? "#fff" : "var(--text-secondary)",
-                        fontSize: 20,
-                        fontWeight: 700,
-                        letterSpacing: "-0.02em",
-                        border: "1px solid var(--border)",
-                      }}
-                    >
-                      {initials(client.name as string)}
-                    </div>
-                  )}
-
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
-                        {client.name}
-                      </h3>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setOpenClientModal(client); }}
-                        style={{
-                          flexShrink: 0,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: "var(--accent)",
-                          background: "rgba(0,113,227,0.08)",
-                          border: "none",
-                          borderRadius: "var(--radius-pill)",
-                          padding: "5px 12px",
-                          cursor: "pointer",
-                          transition: "var(--transition)",
-                        }}
-                        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.15)")}
-                        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.08)")}
-                        aria-label={`View ${client.name} description`}
-                      >
-                        View
-                      </button>
-                    </div>
-                    <p style={{
-                      marginTop: 6,
-                      fontSize: 13,
-                      color: "var(--text-secondary)",
-                      overflow: "hidden",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical" as const,
-                      lineHeight: "1.5",
-                    }}>
-                      {previewText || "No description"}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Projects ── */}
-        {projects.length > 0 && (
-          <section>
-            <SectionHeading>Projects</SectionHeading>
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
-              {projects.map((project) => {
-                const isSelected = selectedProject === project.id;
                 return (
-                  <div
-                    key={project.id}
-                    onClick={() => setSelectedProject(project.id)}
-                    style={{
-                      flexShrink: 0,
-                      width: 220,
-                      padding: "16px 18px",
-                      borderRadius: "var(--radius-lg)",
-                      cursor: "pointer",
-                      background: isSelected ? "rgba(0,113,227,0.07)" : "var(--bg-elevated)",
-                      border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
-                      boxShadow: isSelected ? "0 0 0 3px rgba(0,113,227,0.12)" : "var(--shadow-card)",
-                      transition: "var(--transition)",
-                    }}
-                  >
-                    <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 4px", letterSpacing: "-0.01em" }}>
-                      {project.name}
-                    </h3>
-                    {project.description && (
-                      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: "1.4", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
-                        {stripMarkdown(project.description)}
-                      </p>
-                    )}
+                  <div key={client.id} style={{ position: "relative" }}>
+                    <button
+                      onClick={() => setSelectedClient(client.id)} aria-pressed={isSelected}
+                      className="av-surface av-surface-interactive"
+                      style={{ ...selectableStyle(isSelected), width: "100%", display: "flex", alignItems: "flex-start", gap: 14, padding: 16, paddingRight: 84, borderRadius: "var(--av-radius-lg)" }}
+                    >
+                      {avatarSrc ? (
+                        <img src={avatarSrc} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: "var(--av-radius-md)", flexShrink: 0, border: "1px solid var(--color-border)" }} />
+                      ) : (
+                        <div aria-hidden style={{ width: 52, height: 52, borderRadius: "var(--av-radius-md)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: isSelected ? "var(--color-accent)" : "var(--color-bg-tertiary)", color: isSelected ? "var(--color-accent-ink)" : "var(--color-text-secondary)", fontSize: 17, fontWeight: 650, letterSpacing: "-0.02em" }}>
+                          {initials(client.name as string)}
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 600, letterSpacing: "-0.02em" }}>{client.name}</h3>
+                        <p style={{ margin: "5px 0 0", fontSize: 13, lineHeight: 1.45, color: "var(--color-text-secondary)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
+                          {previewText || "No description"}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setOpenClientModal(client)} className="av-btn av-btn-ghost av-btn-sm"
+                      style={{ position: "absolute", top: 12, right: 12 }} aria-label={`View ${client.name} description`}
+                    >
+                      Details
+                    </button>
                   </div>
                 );
               })}
             </div>
-          </section>
+          )}
+        </Section>
+
+        {/* ── Projects ── */}
+        {projects.length > 0 && (
+          <Section index="02" title="Projects" count={projects.length}>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+              {projects.map((project) => {
+                const isSelected = selectedProject === project.id;
+                return (
+                  <button key={project.id} onClick={() => setSelectedProject(project.id)} aria-pressed={isSelected} className="av-surface av-surface-interactive" style={{ ...selectableStyle(isSelected), padding: "16px 18px", borderRadius: "var(--av-radius-lg)" }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, letterSpacing: "-0.02em" }}>{project.name}</h3>
+                    {project.description && (
+                      <p style={{ fontSize: 12.5, color: "var(--color-text-secondary)", margin: "6px 0 0", lineHeight: 1.45, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
+                        {stripMarkdown(project.description)}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
         )}
 
         {/* ── Assets ── */}
         {assets.length > 0 && (
-          <section>
-            <SectionHeading>Assets</SectionHeading>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <Section index="03" title="Assets" count={assets.length}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }} role="group" aria-label="Assets">
               {assets.map((asset) => {
                 const isSelected = selectedAsset === asset.id;
                 return (
                   <button
-                    key={asset.id}
-                    onClick={() => setSelectedAsset(asset.id)}
-                    style={{
-                      padding: "8px 18px",
-                      borderRadius: "var(--radius-pill)",
-                      border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
-                      background: isSelected ? "var(--accent)" : "var(--bg-elevated)",
-                      color: isSelected ? "#fff" : "var(--text-primary)",
-                      fontSize: 14,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      boxShadow: "var(--shadow-card)",
-                      transition: "var(--transition)",
-                      fontFamily: "var(--font-apple)",
-                    }}
+                    key={asset.id} onClick={() => setSelectedAsset(asset.id)} aria-pressed={isSelected}
+                    className="av-btn"
+                    style={{ borderRadius: "var(--av-radius-pill)", height: 36, background: isSelected ? "var(--color-accent)" : "var(--color-surface)", color: isSelected ? "var(--color-accent-ink)" : "var(--color-text-primary)", borderColor: isSelected ? "var(--color-accent)" : "var(--color-border-strong)" }}
                   >
                     {asset.name}
                   </button>
                 );
               })}
             </div>
-          </section>
+          </Section>
         )}
 
         {/* ── Revisions ── */}
-        <section>
-          {loading && (
-            <div style={{ textAlign: "center", padding: "48px 0" }}>
-              <div style={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                border: "2.5px solid var(--border)",
-                borderTopColor: "var(--accent)",
-                animation: "spin 0.7s linear infinite",
-                margin: "0 auto 12px",
-              }} />
-              <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Loading revisions…</p>
-            </div>
-          )}
-
-          {error && (
-            <p style={{ color: "var(--danger)", textAlign: "center", fontSize: 14 }}>{error}</p>
-          )}
-
-          {!loading && !error && selectedAsset && revisions.length === 0 && (
-            <div style={{ textAlign: "center", padding: "64px 0" }}>
-              <p style={{ color: "var(--text-secondary)", marginBottom: 20, fontSize: 15 }}>
-                No revisions for this asset yet.
-              </p>
-              <button className="apple-btn-primary" onClick={() => setIsFormOpen(true)}>
-                Upload First Revision
-              </button>
-            </div>
-          )}
-
-          {!loading && revisions.length > 0 && (
-            <>
-              {/* Header row */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <SectionHeading>Revisions</SectionHeading>
-                  <button
-                    onClick={() => setShowTimeline(true)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "6px 14px",
-                      borderRadius: "var(--radius-pill)",
-                      border: "1.5px solid var(--border)",
-                      background: "var(--bg-elevated)",
-                      color: "var(--text-secondary)",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      boxShadow: "var(--shadow-card)",
-                      transition: "var(--transition)",
-                      fontFamily: "var(--font-apple)",
-                    }}
-                  >
-                    <span>⏱</span>
-                    <span>Timeline</span>
-                  </button>
-                </div>
-
+        {(selectedAsset || loading) && (
+          <Section
+            index="04" title="Revisions" count={loading ? undefined : revisions.length}
+            actions={!loading && revisions.length > 0 ? (
+              <>
+                <button onClick={() => setShowTimeline(true)} className="av-btn av-btn-secondary av-btn-sm">Timeline</button>
                 {revisions.length >= 2 && (
                   <button
                     onClick={() => { setCompareMode(!compareMode); setSelectedForCompare([]); }}
-                    style={{
-                      padding: "8px 18px",
-                      borderRadius: "var(--radius-pill)",
-                      border: `1.5px solid ${compareMode ? "var(--danger)" : "var(--accent)"}`,
-                      background: compareMode ? "rgba(255,69,58,0.08)" : "rgba(0,113,227,0.08)",
-                      color: compareMode ? "var(--danger)" : "var(--accent)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "var(--transition)",
-                      fontFamily: "var(--font-apple)",
-                    }}
+                    className={`av-btn av-btn-sm ${compareMode ? "av-btn-danger" : "av-btn-secondary"}`}
                   >
-                    {compareMode ? "✕ Cancel Compare" : "Compare Revisions"}
+                    {compareMode ? "Cancel compare" : "Compare revisions"}
                   </button>
                 )}
-              </div>
+                <button className="av-btn av-btn-primary av-btn-sm" onClick={() => setIsFormOpen(true)}>Upload revision</button>
+              </>
+            ) : undefined}
+          >
+            {loading && <SkeletonGrid />}
 
-              {compareMode && (
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
-                  Select exactly 2 revisions to compare ({selectedForCompare.length}/2 selected)
-                </p>
-              )}
+            {error && <p role="alert" style={{ color: "var(--color-danger)", fontSize: 14 }}>{error}</p>}
 
-              <div
-                style={{
-                  display: "grid",
-                  gap: 20,
-                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                }}
-              >
-                {revisions.map((revision) => {
-                  const isSelectedForCompare = selectedForCompare.includes(revision.id);
-                  return (
-                    <div key={revision.id} style={{ position: "relative" }}>
-                      {compareMode && (
-                        <div
-                          onClick={() => {
-                            setSelectedForCompare((prev) => {
-                              if (prev.includes(revision.id)) return prev.filter((id) => id !== revision.id);
-                              if (prev.length >= 2) return prev;
-                              return [...prev, revision.id];
-                            });
-                          }}
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            zIndex: 10,
-                            borderRadius: "var(--radius-lg)",
-                            cursor: "pointer",
-                            border: `3px solid ${isSelectedForCompare ? "var(--accent)" : "transparent"}`,
-                            background: isSelectedForCompare ? "rgba(0,113,227,0.08)" : "transparent",
-                            transition: "var(--transition)",
-                          }}
-                        >
-                          <div
-                            style={{
-                              position: "absolute",
-                              top: 12,
-                              right: 12,
-                              width: 24,
-                              height: 24,
-                              borderRadius: "50%",
-                              border: `2px solid ${isSelectedForCompare ? "var(--accent)" : "var(--border)"}`,
-                              background: isSelectedForCompare ? "var(--accent)" : "var(--bg-elevated)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
+            {!loading && !error && selectedAsset && revisions.length === 0 && (
+              <Empty
+                title="No revisions yet."
+                hint="Upload the first version to start the review."
+                action={<button className="av-btn av-btn-primary" onClick={() => setIsFormOpen(true)}>Upload first revision</button>}
+              />
+            )}
+
+            {!loading && revisions.length > 0 && (
+              <>
+                {compareMode && (
+                  <p className="av-mono" style={{ fontSize: 12.5, color: "var(--color-text-secondary)", margin: "0 0 20px" }}>
+                    Select exactly 2 revisions to compare · {selectedForCompare.length}/2 selected
+                  </p>
+                )}
+
+                <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+                  {revisions.map((revision) => {
+                    const isSelectedForCompare = selectedForCompare.includes(revision.id);
+                    return (
+                      <div key={revision.id} style={{ position: "relative" }}>
+                        {compareMode && (
+                          <button
+                            aria-pressed={isSelectedForCompare} aria-label={`Select revision ${revision.title || revision.version} for comparison`}
+                            onClick={() => {
+                              setSelectedForCompare((prev) => {
+                                if (prev.includes(revision.id)) return prev.filter((id) => id !== revision.id);
+                                if (prev.length >= 2) return prev;
+                                return [...prev, revision.id];
+                              });
                             }}
+                            style={{ position: "absolute", inset: 0, zIndex: 10, borderRadius: "var(--av-radius-lg)", cursor: "pointer", border: `2px solid ${isSelectedForCompare ? "var(--color-accent)" : "transparent"}`, background: isSelectedForCompare ? "color-mix(in srgb, var(--color-accent) 8%, transparent)" : "transparent", transition: "var(--transition)" }}
                           >
-                            {isSelectedForCompare && (
-                              <svg width="12" height="12" fill="#fff" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      <AssetCard revision={revision} />
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Compare floating CTA */}
-              {compareMode && selectedForCompare.length === 2 && (
-                <div style={{ position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)", zIndex: 40 }}>
-                  <button
-                    onClick={() => setShowComparison(true)}
-                    className="apple-btn-primary"
-                    style={{ padding: "14px 36px", fontSize: 16, boxShadow: "0 8px 32px rgba(0,113,227,0.35)" }}
-                  >
-                    Compare Selected
-                  </button>
+                            <span aria-hidden style={{ position: "absolute", top: 12, right: 12, width: 24, height: 24, borderRadius: 7, border: `1.5px solid ${isSelectedForCompare ? "var(--color-accent)" : "var(--color-border-strong)"}`, background: isSelectedForCompare ? "var(--color-accent)" : "var(--color-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {isSelectedForCompare && (
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                              )}
+                            </span>
+                          </button>
+                        )}
+                        <AssetCard revision={revision} />
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
 
-              {/* Upload button */}
-              <div style={{ textAlign: "center", marginTop: 40 }}>
-                <button className="apple-btn-secondary" onClick={() => setIsFormOpen(true)}>
-                  Upload New Revision
-                </button>
-              </div>
-            </>
-          )}
-        </section>
-      </div>
+                {compareMode && selectedForCompare.length === 2 && (
+                  <div style={{ position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)", zIndex: 40 }}>
+                    <button onClick={() => setShowComparison(true)} className="av-btn av-btn-primary av-btn-lg" style={{ boxShadow: "var(--av-shadow-deep)" }}>
+                      Compare selected
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </Section>
+        )}
+      </main>
 
       {/* ── Client description modal ── */}
-      {openClientModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.4)",
-            backdropFilter: "blur(8px)",
-            padding: 24,
-          }}
-          onClick={() => setOpenClientModal(null)}
-        >
-          <div
-            className="animate-apple-scale-in"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--bg-elevated)",
-              borderRadius: "var(--radius-xl)",
-              boxShadow: "var(--shadow-modal)",
-              border: "1px solid var(--border)",
-              width: "100%",
-              maxWidth: 640,
-              maxHeight: "80vh",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                padding: "28px 28px 20px",
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
+      <Modal open={!!openClientModal} onClose={() => setOpenClientModal(null)} title={openClientModal?.name} maxWidth={640}>
+        {openClientModal && (
+          <>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "24px 28px 18px", borderBottom: "1px solid var(--color-border)" }}>
               <div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.02em" }}>
-                  {openClientModal.name}
-                </h3>
-                <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
-                  {openClientModal.id}
-                </p>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 650, letterSpacing: "-0.03em" }}>{openClientModal.name}</h3>
+                <p className="av-mono" style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: "4px 0 0" }}>{openClientModal.id}</p>
               </div>
-              <button
-                onClick={() => setOpenClientModal(null)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  border: "none",
-                  background: "var(--bg)",
-                  color: "var(--text-secondary)",
-                  cursor: "pointer",
-                  fontSize: 18,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                ×
+              <button onClick={() => setOpenClientModal(null)} className="av-btn av-btn-icon" aria-label="Close" data-tip="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
-              <div
-                style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: "1.7" }}
-                className="prose dark:prose-invert max-w-none"
-              >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
-                >
+            <div style={{ padding: "22px 28px 28px" }}>
+              <div style={{ color: "var(--color-text-secondary)", fontSize: 15, lineHeight: 1.7 }} className="prose dark:prose-invert max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
                   {(openClientModal as any).description || "No description."}
                 </ReactMarkdown>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {isFormOpen && (
-        <RevisionForm
-          assetId={selectedAsset}
-          onClose={() => setIsFormOpen(false)}
-          onSuccess={handleUploadSuccess}
-        />
+        <RevisionForm assetId={selectedAsset} onClose={() => setIsFormOpen(false)} onSuccess={handleUploadSuccess} />
       )}
 
       {/* Revision Comparison Modal */}
@@ -634,15 +415,8 @@ const Home: React.FC = () => {
 
       {/* Asset Timeline Modal */}
       {showTimeline && selectedAsset && (
-        <AssetTimeline
-          asset={assets.find((a) => a.id === selectedAsset)}
-          revisions={revisions}
-          onClose={() => setShowTimeline(false)}
-        />
+        <AssetTimeline asset={assets.find((a) => a.id === selectedAsset)} revisions={revisions} onClose={() => setShowTimeline(false)} />
       )}
-
-      {/* Loading spinner keyframe inline */}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

@@ -56,8 +56,8 @@ function renderCommentText(text: string): React.ReactNode {
                     style={{
                         display: "inline-flex",
                         alignItems: "center",
-                        background: "rgba(0, 113, 227, 0.1)",
-                        color: "var(--accent)",
+                        background: "color-mix(in srgb, var(--accent) 10%, transparent)",
+                        color: "var(--color-accent-text)",
                         padding: "1px 7px",
                         borderRadius: "999px",
                         fontSize: 12,
@@ -83,9 +83,9 @@ function TaskBadge({
     const [showDropdown, setShowDropdown] = useState(false);
 
     const statusConfig = {
-        open: { bg: "rgba(0, 113, 227, 0.1)", color: "var(--accent)", label: "Open", icon: "📋" },
-        in_progress: { bg: "rgba(255, 159, 10, 0.12)", color: "var(--warning)", label: "In Progress", icon: "🔄" },
-        done: { bg: "rgba(48, 209, 88, 0.12)", color: "var(--success)", label: "Done", icon: "✅" },
+        open: { bg: "color-mix(in srgb, var(--accent) 10%, transparent)", color: "var(--color-accent-text)", label: "Open" },
+        in_progress: { bg: "color-mix(in srgb, var(--warning) 12%, transparent)", color: "var(--warning)", label: "In Progress" },
+        done: { bg: "color-mix(in srgb, var(--success) 12%, transparent)", color: "var(--success)", label: "Done" },
     };
 
     const config = statusConfig[task.status];
@@ -111,7 +111,7 @@ function TaskBadge({
                     transition: "var(--transition)",
                 }}
             >
-                <span>{config.icon}</span>
+                <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
                 <span>{config.label}</span>
                 <span style={{ color: "var(--text-tertiary)", marginLeft: 2 }}>→ {task.assignedTo}</span>
             </button>
@@ -154,7 +154,7 @@ function TaskBadge({
                                     border: "none",
                                 }}
                             >
-                                <span>{statusConfig[s].icon}</span>
+                                <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
                                 <span>{statusConfig[s].label}</span>
                             </button>
                         )
@@ -191,8 +191,8 @@ function CommentItem({
             ref={isActive ? activeCommentRef : undefined}
             style={{
                 border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                background: isActive ? "rgba(0, 113, 227, 0.06)" : "transparent",
-                boxShadow: isActive ? "0 0 0 3px rgba(0,113,227,0.15)" : "none",
+                background: isActive ? "color-mix(in srgb, var(--accent) 6%, transparent)" : "transparent",
+                boxShadow: isActive ? "0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent)" : "none",
                 padding: 12,
                 borderRadius: "var(--radius-md)",
                 transition: "var(--transition)",
@@ -216,7 +216,7 @@ function CommentItem({
                                 fontSize: 12,
                             }}
                             onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.background = "rgba(48, 209, 88, 0.15)";
+                                (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--success) 15%, transparent)";
                                 (e.currentTarget as HTMLButtonElement).style.color = "var(--success)";
                             }}
                             onMouseLeave={(e) => {
@@ -351,7 +351,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 background: "var(--bg-elevated)",
                 borderLeft: "1px solid var(--border)",
                 padding: 16,
-                fontFamily: "var(--font-apple)",
+                fontFamily: "var(--font-sans)",
                 transition: "var(--transition)",
                 ...(sidebarWidth ? { width: `${sidebarWidth}px` } : { width: "100%" }),
             }}
@@ -384,16 +384,16 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     className="mb-4"
                     style={{
                         padding: 10,
-                        background: "rgba(0, 113, 227, 0.08)",
-                        border: "1px solid rgba(0, 113, 227, 0.2)",
+                        background: "color-mix(in srgb, var(--accent) 8%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
                         borderRadius: "var(--radius-md)",
                     }}
                 >
                     <div style={{ fontSize: 13, color: "var(--text-primary)" }}>
-                        📝 Annotation at{" "}
+                        Annotation at{" "}
                         {formatTime(currentAnnotation.timestamp)}
                         {currentAnnotation.duration && (
-                            <span style={{ marginLeft: 8, color: "var(--accent)" }}>
+                            <span style={{ marginLeft: 8, color: "var(--color-accent-text)" }}>
                                 (visible for {currentAnnotation.duration}s)
                             </span>
                         )}
@@ -432,7 +432,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                     {hasReplies && (
                                         <div
                                             className="ml-4 mt-1 pl-3 space-y-2"
-                                            style={{ borderLeft: "2px solid rgba(0, 113, 227, 0.2)" }}
+                                            style={{ borderLeft: "2px solid color-mix(in srgb, var(--accent) 20%, transparent)" }}
                                         >
                                             {/* Collapse/Expand toggle */}
                                             {replies.length > 2 && (
@@ -444,7 +444,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                                     }
                                                     style={{
                                                         fontSize: 10,
-                                                        color: "var(--accent)",
+                                                        color: "var(--color-accent-text)",
                                                         fontWeight: 500,
                                                         padding: "2px 0",
                                                         background: "none",
@@ -452,8 +452,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                                     }}
                                                 >
                                                     {isCollapsed
-                                                        ? `▸ Show ${replies.length} replies`
-                                                        : `▾ Hide replies`}
+                                                        ? `Show ${replies.length} replies`
+                                                        : `Hide replies`}
                                                 </button>
                                             )}
 
@@ -506,10 +506,10 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
             {/* Command Palette */}
             {showCommandPalette && filteredCommands.length > 0 && (
-                <div className="mb-3 overflow-hidden" style={{ background: "#18181B", border: "1px solid #2E2E33", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
-                    <div className="px-3 py-2" style={{ borderBottom: "1px solid #2E2E33" }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                            ⚡ Commands
+                <div className="mb-3 overflow-hidden" style={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border-strong)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
+                    <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--color-border-strong)" }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                            Commands
                         </div>
                     </div>
                     <div className="p-1">
@@ -519,16 +519,16 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                 className="flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150"
                                 style={{
                                     background: index === selectedCommandIndex ? "var(--accent)" : "transparent",
-                                    boxShadow: index === selectedCommandIndex ? "0 2px 8px rgba(0,113,227,0.35)" : "none",
+                                    boxShadow: index === selectedCommandIndex ? "0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent)" : "none",
                                 }}
                                 onClick={() => onExecuteCommand(command)}
                             >
                                 <div className="flex-1 min-w-0">
-                                    <div style={{ fontWeight: 500, fontSize: 13, color: index === selectedCommandIndex ? "#fff" : "#D1D5DB" }} className="truncate">
+                                    <div style={{ fontWeight: 500, fontSize: 13, color: index === selectedCommandIndex ? "var(--color-accent-ink)" : "var(--color-text-primary)" }} className="truncate">
                                         {command.label}
                                     </div>
                                     <div
-                                        style={{ fontSize: 11, color: index === selectedCommandIndex ? "rgba(255,255,255,0.75)" : "#6B7280" }}
+                                        style={{ fontSize: 11, color: index === selectedCommandIndex ? "color-mix(in srgb, var(--color-accent-ink) 70%, transparent)" : "var(--color-text-tertiary)" }}
                                         className="truncate"
                                     >
                                         {command.description}
@@ -537,21 +537,21 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                             </div>
                         ))}
                     </div>
-                    <div className="px-3 py-1.5 flex items-center gap-3" style={{ borderTop: "1px solid #2E2E33", fontSize: 10, color: "#6B7280" }}>
+                    <div className="px-3 py-1.5 flex items-center gap-3" style={{ borderTop: "1px solid var(--color-border-strong)", fontSize: 10, color: "var(--color-text-tertiary)" }}>
                         <span>
-                            <kbd style={{ padding: "1px 5px", background: "#27272A", border: "1px solid #3F3F46", borderRadius: 4, color: "#9CA3AF" }}>
+                            <kbd style={{ padding: "1px 5px", background: "var(--color-bg-tertiary)", border: "1px solid var(--color-border-strong)", borderRadius: 4, color: "var(--color-text-secondary)" }}>
                                 ↑↓
                             </kbd>{" "}
                             navigate
                         </span>
                         <span>
-                            <kbd style={{ padding: "1px 5px", background: "#27272A", border: "1px solid #3F3F46", borderRadius: 4, color: "#9CA3AF" }}>
+                            <kbd style={{ padding: "1px 5px", background: "var(--color-bg-tertiary)", border: "1px solid var(--color-border-strong)", borderRadius: 4, color: "var(--color-text-secondary)" }}>
                                 ↵
                             </kbd>{" "}
                             select
                         </span>
                         <span>
-                            <kbd style={{ padding: "1px 5px", background: "#27272A", border: "1px solid #3F3F46", borderRadius: 4, color: "#9CA3AF" }}>
+                            <kbd style={{ padding: "1px 5px", background: "var(--color-bg-tertiary)", border: "1px solid var(--color-border-strong)", borderRadius: 4, color: "var(--color-text-secondary)" }}>
                                 esc
                             </kbd>{" "}
                             dismiss
@@ -564,15 +564,15 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             {showAssignDropdown &&
                 assignFilteredUsers &&
                 assignFilteredUsers.length > 0 && (
-                    <div className="mb-3 overflow-hidden" style={{ background: "#18181B", border: "1px solid #2E2E33", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
-                        <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: "1px solid #2E2E33" }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                📋 Assign Task To
+                    <div className="mb-3 overflow-hidden" style={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border-strong)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
+                        <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: "1px solid var(--color-border-strong)" }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                Assign task to
                             </div>
                             {onCloseAssignDropdown && (
                                 <button
                                     onClick={onCloseAssignDropdown}
-                                    style={{ color: "#6B7280", fontSize: 12, background: "none", border: "none", cursor: "pointer" }}
+                                    style={{ color: "var(--color-text-tertiary)", fontSize: 12, background: "none", border: "none", cursor: "pointer" }}
                                 >
                                     ✕
                                 </button>
@@ -589,7 +589,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                         className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150"
                                         style={{
                                             background: isSel ? "var(--accent)" : "transparent",
-                                            boxShadow: isSel ? "0 2px 8px rgba(0,113,227,0.35)" : "none",
+                                            boxShadow: isSel ? "0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent)" : "none",
                                         }}
                                         onClick={() =>
                                             onAssignTask && onAssignTask(user)
@@ -598,17 +598,17 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                         <div
                                             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase flex-shrink-0"
                                             style={{
-                                                background: isSel ? "rgba(255,255,255,0.25)" : "#27272A",
-                                                color: isSel ? "#fff" : "#D1D5DB",
+                                                background: isSel ? "color-mix(in srgb, var(--color-accent-ink) 22%, transparent)" : "var(--color-bg-tertiary)",
+                                                color: isSel ? "var(--color-accent-ink)" : "var(--color-text-primary)",
                                             }}
                                         >
                                             {displayName.charAt(0)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div style={{ fontWeight: 500, fontSize: 13, color: isSel ? "#fff" : "#D1D5DB" }} className="truncate">
+                                            <div style={{ fontWeight: 500, fontSize: 13, color: isSel ? "var(--color-accent-ink)" : "var(--color-text-primary)" }} className="truncate">
                                                 {displayName}
                                             </div>
-                                            <div style={{ fontSize: 11, color: isSel ? "rgba(255,255,255,0.75)" : "#6B7280" }} className="truncate">
+                                            <div style={{ fontSize: 11, color: isSel ? "color-mix(in srgb, var(--color-accent-ink) 70%, transparent)" : "var(--color-text-tertiary)" }} className="truncate">
                                                 {user.email}
                                             </div>
                                         </div>
@@ -626,12 +626,12 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                         <div
                             className="flex items-center justify-between mb-2 px-2 py-1.5"
                             style={{
-                                background: "rgba(0, 113, 227, 0.08)",
-                                border: "1px solid rgba(0, 113, 227, 0.2)",
+                                background: "color-mix(in srgb, var(--accent) 8%, transparent)",
+                                border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
                                 borderRadius: "var(--radius-md)",
                             }}
                         >
-                            <span style={{ fontSize: 12, color: "var(--accent)" }}>
+                            <span style={{ fontSize: 12, color: "var(--color-accent-text)" }}>
                                 ↩ Replying to{" "}
                                 <span style={{ fontWeight: 600 }}>
                                     @{replyingTo.name}
@@ -655,20 +655,20 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                     key={pill.id}
                                     className="inline-flex items-center gap-1.5"
                                     style={{
-                                        background: "rgba(0, 113, 227, 0.08)",
-                                        color: "var(--accent)",
+                                        background: "color-mix(in srgb, var(--accent) 8%, transparent)",
+                                        color: "var(--color-accent-text)",
                                         padding: "4px 10px",
                                         borderRadius: "999px",
                                         fontSize: 12,
                                         fontWeight: 500,
-                                        border: "1px solid rgba(0, 113, 227, 0.2)",
+                                        border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
                                     }}
                                 >
-                                    <span>🕐</span>
+                                    <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                                     <span>{pill.text}</span>
                                     <button
                                         onClick={() => onRemovePill(pill.id)}
-                                        style={{ marginLeft: 2, color: "var(--accent)", opacity: 0.6, background: "none", border: "none", cursor: "pointer" }}
+                                        style={{ marginLeft: 2, color: "var(--color-accent-text)", opacity: 0.6, background: "none", border: "none", cursor: "pointer" }}
                                         title="Remove timestamp"
                                     >
                                         ×
@@ -709,7 +709,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                         fontWeight: 500,
                                         border: `1px solid ${timeRangeDuration === d ? "var(--accent)" : "var(--border)"}`,
                                         background: timeRangeDuration === d ? "var(--accent)" : "var(--bg)",
-                                        color: timeRangeDuration === d ? "#fff" : "var(--text-secondary)",
+                                        color: timeRangeDuration === d ? "var(--color-accent-ink)" : "var(--text-secondary)",
                                         transition: "var(--transition)",
                                     }}
                                 >
@@ -786,7 +786,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                         className="w-full mt-2"
                         style={{
                             background: "var(--accent)",
-                            color: "#fff",
+                            color: "var(--color-accent-ink)",
                             padding: "8px 12px",
                             borderRadius: "var(--radius-md)",
                             fontWeight: 500,

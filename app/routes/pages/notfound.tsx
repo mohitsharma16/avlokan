@@ -14,7 +14,7 @@ export default function NotFound() {
         justifyContent: "center",
         gap: 16,
         background: "var(--bg)",
-        fontFamily: "var(--font-apple)",
+        fontFamily: "var(--font-sans)",
         textAlign: "center",
         padding: 24,
       }}
@@ -28,7 +28,7 @@ export default function NotFound() {
       <p style={{ fontSize: 16, color: "var(--text-secondary)", margin: 0 }}>
         Couldn't find what you were looking for.
       </p>
-      <Link to="/" className="apple-btn-primary" style={{ marginTop: 12, fontSize: 14.5, padding: "10px 22px" }}>
+      <Link to="/" className="av-btn av-btn-primary" style={{ marginTop: 12, fontSize: 14.5, padding: "10px 22px" }}>
         Back to home
       </Link>
     </div>

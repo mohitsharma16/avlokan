@@ -9,6 +9,11 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import "@fontsource/inter-tight/400.css";
+import "@fontsource/inter-tight/500.css";
+import "@fontsource/inter-tight/600.css";
+import "@fontsource/inter-tight/700.css";
+import "@fontsource/jetbrains-mono/500.css";
 import "./app.css";
 import AuthGate from "./routes/components/Auth/AuthGate";
 import { AuthProvider } from "./routes/contexts/AuthContext";
@@ -19,7 +24,7 @@ export const links: Route.LinksFunction = () => [];
 export const meta: Route.MetaFunction = () => [
   { name: "description", content: "Avlokan — review creative work the way it deserves. Frame-accurate annotation, timestamped feedback, and gated share links, built for creative teams." },
   { property: "og:site_name", content: "Avlokan" },
-  { name: "theme-color", content: "#0071E3" },
+  { name: "theme-color", content: "#09090B" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

@@ -53,16 +53,53 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
         };
     }, [videoRef]);
 
-    // Click on the track to seek
-    const handleTrackClick = useCallback(
-        (e: React.MouseEvent) => {
-            if (!trackRef.current || !videoRef.current || duration === 0) return;
+    // Drag-to-scrub: pointer capture keeps the drag going even when the cursor leaves the track.
+    const [scrubbing, setScrubbing] = useState(false);
+    const [scrubTime, setScrubTime] = useState(0);
+    const wasPlaying = useRef(false);
+
+    const timeFromX = useCallback(
+        (clientX: number) => {
+            if (!trackRef.current) return 0;
             const rect = trackRef.current.getBoundingClientRect();
-            const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            videoRef.current.currentTime = ratio * duration;
+            return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * duration;
         },
-        [duration, videoRef]
+        [duration]
     );
+
+    const seek = useCallback(
+        (t: number) => {
+            setScrubTime(t);
+            if (videoRef.current) videoRef.current.currentTime = t;
+        },
+        [videoRef]
+    );
+
+    const onPointerDown = (e: React.PointerEvent) => {
+        if (e.button !== 0 || !videoRef.current || duration === 0) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        wasPlaying.current = !videoRef.current.paused;
+        videoRef.current.pause();
+        setScrubbing(true);
+        seek(timeFromX(e.clientX));
+    };
+    const onPointerMove = (e: React.PointerEvent) => {
+        if (scrubbing) seek(timeFromX(e.clientX));
+    };
+    const endScrub = () => {
+        if (!scrubbing) return;
+        setScrubbing(false);
+        if (wasPlaying.current) videoRef.current?.play().catch(() => {});
+    };
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        const step = e.shiftKey ? 5 : 1;
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+            e.preventDefault();
+            e.stopPropagation();
+            const t = Math.max(0, Math.min(duration, (videoRef.current?.currentTime ?? 0) + (e.key === "ArrowRight" ? step : -step)));
+            seek(t);
+        }
+    };
 
     if (duration === 0) return null;
 
@@ -83,6 +120,9 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
         label: `Annotation by ${a.createdBy || "unknown"}`,
     }));
 
+    const shown = scrubbing ? scrubTime : currentTime;
+    const shownPct = `${(shown / duration) * 100}%`;
+
     const fmt = (t: number) => {
         const m = Math.floor(t / 60);
         const sec = Math.floor(t % 60);
@@ -94,30 +134,48 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
                 <span className="av-eyebrow" style={{ fontSize: 10 }}>Timeline</span>
                 <span className="av-mono" style={{ fontSize: 12, color: "var(--color-text-primary)" }}>
-                    {fmt(currentTime)} <span style={{ color: "var(--color-text-tertiary)" }}>/ {fmt(duration)}</span>
+                    {fmt(shown)} <span style={{ color: "var(--color-text-tertiary)" }}>/ {fmt(duration)}</span>
                 </span>
                 <span style={{ marginLeft: "auto", display: "inline-flex", gap: 14, fontSize: 11, color: "var(--color-text-tertiary)" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><i aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent)" }} />{commentMarkers.length} comment{commentMarkers.length !== 1 ? "s" : ""}</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><i aria-hidden style={{ width: 7, height: 7, transform: "rotate(45deg)", borderRadius: 1, background: "var(--color-accent-soft)" }} />{annotationMarkers.length} annotation{annotationMarkers.length !== 1 ? "s" : ""}</span>
                 </span>
             </div>
-        <div className="relative w-full select-none" style={{ height: 32 }}>
-            {/* Track background */}
+        <div
+            className="relative w-full select-none"
+            style={{ height: 40, cursor: scrubbing ? "grabbing" : "pointer", touchAction: "none" }}
+            role="slider" tabIndex={0} aria-label="Video timeline" aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(shown)} aria-valuetext={`${fmt(shown)} of ${fmt(duration)}`}
+            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endScrub} onPointerCancel={endScrub} onKeyDown={onKeyDown}
+        >
+            {/* Track background — grows while scrubbing */}
             <div
                 ref={trackRef}
-                className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full cursor-pointer overflow-visible"
-                style={{ background: "var(--color-bg-tertiary)", border: "1px solid var(--color-border)", height: 10, backgroundImage: "repeating-linear-gradient(90deg, var(--color-border-strong) 0 1px, transparent 1px 24px)" }}
-                onClick={handleTrackClick}
+                className="absolute inset-x-0 top-1/2 rounded-full overflow-visible"
+                style={{
+                    height: scrubbing ? 16 : 10,
+                    transform: "translateY(-50%)",
+                    background: "var(--color-bg-tertiary)",
+                    border: `1px solid ${scrubbing ? "var(--color-accent)" : "var(--color-border)"}`,
+                    backgroundImage: "repeating-linear-gradient(90deg, var(--color-border-strong) 0 1px, transparent 1px 24px)",
+                    transition: "height 180ms var(--av-ease), border-color 180ms ease",
+                }}
             >
                 {/* Progress fill */}
                 <div
                     className="absolute left-0 top-0 h-full rounded-full pointer-events-none"
-                    style={{ width: `${(currentTime / duration) * 100}%`, background: "var(--accent)" }}
+                    style={{ width: shownPct, background: "var(--accent)", transition: scrubbing ? "none" : "width 250ms linear" }}
                 />
             </div>
 
-            {/* Playhead */}
-            <div aria-hidden className="absolute pointer-events-none" style={{ left: `${(currentTime / duration) * 100}%`, top: 2, bottom: 2, width: 2, marginLeft: -1, background: "var(--color-accent)", borderRadius: 2, zIndex: 5 }} />
+            {/* Playhead: grows a handle and time bubble while scrubbing */}
+            <div aria-hidden className="absolute pointer-events-none" style={{ left: shownPct, top: scrubbing ? 0 : 6, bottom: scrubbing ? 0 : 6, width: 2, marginLeft: -1, background: "var(--color-accent)", borderRadius: 2, zIndex: 5, transition: scrubbing ? "top 180ms var(--av-ease), bottom 180ms var(--av-ease)" : "left 250ms linear, top 180ms var(--av-ease), bottom 180ms var(--av-ease)" }}>
+                <span style={{ position: "absolute", top: -4, left: "50%", width: scrubbing ? 14 : 9, height: scrubbing ? 14 : 9, transform: "translateX(-50%) rotate(45deg)", background: "var(--color-accent)", borderRadius: 3, boxShadow: scrubbing ? "0 0 0 4px color-mix(in srgb, var(--color-accent) 25%, transparent)" : "none", transition: "all 180ms var(--av-ease)" }} />
+                {scrubbing && (
+                    <span className="av-mono" style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", padding: "3px 8px", borderRadius: 6, background: "var(--color-accent)", color: "var(--color-accent-ink)", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {fmt(shown)}
+                    </span>
+                )}
+            </div>
 
             {/* Comment markers */}
             {commentMarkers.map((m) => {
@@ -129,6 +187,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                         className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer transition-transform z-10 ${isActive ? "scale-150" : "hover:scale-125"
                             }`}
                         style={{ left: `${leftPct}%` }}
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                             e.stopPropagation();
                             onMarkerClick(m.id, m.time);
@@ -159,6 +218,7 @@ const VideoTimeline: React.FC<VideoTimelineProps> = ({
                         key={`a-${m.id}`}
                         className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-125 transition-transform z-10"
                         style={{ left: `${leftPct}%` }}
+                        onPointerDown={(e) => e.stopPropagation()}
                         onMouseEnter={(e) => {
                             const rect = (e.target as HTMLElement).getBoundingClientRect();
                             setHoveredMarker({ type: "annotation", id: m.id, label: m.label, x: rect.left });

@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { EASE } from "../motion/motionVariants";
+import { useModalHistory } from "../../hooks/useModalHistory";
 
 interface ModalProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface ModalProps {
 /** Shared modal shell: blurred scrim, controlled radius, Esc to close, focus moved into the dialog. */
 export const Modal: React.FC<ModalProps> = ({ open, onClose, title, maxWidth = 560, children }) => {
   const panel = useRef<HTMLDivElement>(null);
+  useModalHistory(open, onClose, useId());
 
   useEffect(() => {
     if (!open) return;

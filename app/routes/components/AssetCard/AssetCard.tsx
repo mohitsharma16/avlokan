@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { AssetCardProps, PBUser } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
+import { useModalHistory } from "../../hooks/useModalHistory";
 import { useAnnotations } from "./useAnnotations";
 import type { AnnotationTool } from "./useAnnotations";
 import { useCommentEditor } from "./useCommentEditor";
@@ -24,6 +25,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [showModal, setShowModal] = useState(false);
+  useModalHistory(showModal, () => setShowModal(false), `review-${revision.id}`);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
@@ -406,6 +408,18 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   </div>
                 </>
               )}
+
+              {/* Back to revisions — always visible, top-left */}
+              <button
+                onClick={() => setShowModal(false)}
+                className="absolute top-4 left-4 z-30 av-btn"
+                style={{ background: "rgba(9,9,11,0.78)", color: "#F5F5F4", border: "1px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
+                aria-label="Back to revisions"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+                Back
+                <span className="av-kbd" style={{ marginLeft: 2 }}>Esc</span>
+              </button>
 
               {/* Zoom Toolbar */}
               <div className="absolute bottom-10 left-4 z-20 flex items-center gap-1 backdrop-blur-sm px-1.5 py-1" style={{ background: "rgba(9,9,11,0.72)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--av-radius-md)" }}>

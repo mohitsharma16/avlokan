@@ -1,6 +1,8 @@
 export const handle = { public: true };
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import type { Route } from "./+types/landing";
 import { LandingNav } from "../components/landing/LandingNav";
 import { HeroSection } from "../components/landing/HeroSection";
@@ -31,6 +33,13 @@ export const meta: Route.MetaFunction = () => [
 /** The landing page is a single continuous story: problem → product → workflow → outcome.
  *  It is always dark (`av-dark`), independent of the app theme the user has stored. */
 export default function Landing() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  // Signed-in users go straight to their workspace; replace so Back does not bounce here.
+  useEffect(() => {
+    if (user) navigate("/app", { replace: true });
+  }, [user, navigate]);
+
   return (
     <div className="av-dark" style={{ position: "relative", background: "var(--color-bg)", color: "var(--color-text-primary)", overflowX: "clip" }}>
       <a href="#story" className="av-btn av-btn-primary av-btn-sm" style={{ position: "absolute", left: 12, top: -60, zIndex: 999 }} onFocus={(e) => (e.currentTarget.style.top = "12px")} onBlur={(e) => (e.currentTarget.style.top = "-60px")}>Skip to content</a>

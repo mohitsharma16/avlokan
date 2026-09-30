@@ -1,3 +1,4 @@
+import { useModalHistory } from "../../hooks/useModalHistory";
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import type { AssetRevision } from "../../types";
 
@@ -142,6 +143,8 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
         const sec = Math.floor(s % 60);
         return `${m}:${sec.toString().padStart(2, "0")}`;
     };
+
+    useModalHistory(true, onClose, "compare");
 
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">

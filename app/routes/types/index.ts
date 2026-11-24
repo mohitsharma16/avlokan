@@ -26,8 +26,7 @@ export interface AssetRevision {
   title: string;
   description: string;
   asset: string;
-  version: string;
-  versionNumber?: number;
+  versionNumber: number;
   thumbnail?: string;
   video?: string;
   video_file?: string;

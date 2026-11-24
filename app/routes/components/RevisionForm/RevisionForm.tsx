@@ -40,11 +40,12 @@ const RevisionForm: React.FC<RevisionFormProps> = ({ assetId, onClose, onSuccess
     setLoading(true);
     setError(null);
     try {
-      const asset = await pb.collection("assets").getOne(assetId, { expand: "revision_assets" });
-      const revisions = asset?.expand?.revision_assets ?? [];
-      const nextVersion = revisions.length > 0
-        ? Math.max(...revisions.map((r: any) => r.versionNumber || 0)) + 1
-        : 1;
+      const latest = await pb.collection("assets_revision").getList<{ versionNumber: number }>(1, 1, {
+        filter: pb.filter("asset = {:asset}", { asset: assetId }),
+        sort: "-versionNumber",
+        fields: "versionNumber",
+      });
+      const nextVersion = (latest.items[0]?.versionNumber ?? 0) + 1;
 
       const formData = new FormData();
       formData.append("title", title);
@@ -53,17 +54,12 @@ const RevisionForm: React.FC<RevisionFormProps> = ({ assetId, onClose, onSuccess
       formData.append("asset", assetId);
       formData.append("versionNumber", nextVersion.toString());
 
-      const newRevision = await pb.collection("assets_revision").create(formData);
-      const existingRevisions = asset.revision_assets || [];
-
-      await pb.collection("assets").update(assetId, {
-        revision_assets: [...existingRevisions, newRevision.id],
-      });
+      await pb.collection("assets_revision").create(formData);
 
       onSuccess();
       onClose();
     } catch (err) {
-      console.error("Upload or relation mapping failed", err);
+      console.error("Revision upload failed", err);
       setError("Upload failed. Check your connection and try again.");
     } finally {
       setLoading(false);

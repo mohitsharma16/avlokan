@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import type { RecordModel } from "pocketbase";
 import AssetCard from "../components/AssetCard/AssetCard";
 import type { AssetRevision } from "../types";
+import { formatRevisionLabel } from "../utils/revisionVersion";
 import Header from "../components/Header/Header";
 import RevisionForm from "../components/RevisionForm/RevisionForm";
 import { Modal } from "../components/design";
@@ -94,6 +95,7 @@ const Home: React.FC = () => {
   const [revisions, setRevisions] = useState<AssetRevision[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [revisionRefresh, setRevisionRefresh] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const [compareMode, setCompareMode] = useState(false);
@@ -157,9 +159,11 @@ const Home: React.FC = () => {
       if (!selectedAsset) return;
       setLoading(true);
       try {
-        const asset = await pb.collection("assets").getOne(selectedAsset, { expand: "revision_assets" });
-        const expandedAssetRevisions = asset?.expand?.revision_assets ?? [];
-        setRevisions(expandedAssetRevisions);
+        const records = await pb.collection("assets_revision").getFullList<AssetRevision>({
+          filter: pb.filter("asset = {:asset}", { asset: selectedAsset }),
+          sort: "versionNumber",
+        });
+        setRevisions(records);
       } catch (err) {
         console.error("Error fetching revisions:", err);
         setError("Failed to load asset revisions.");
@@ -169,13 +173,11 @@ const Home: React.FC = () => {
     };
 
     fetchRevisions();
-  }, [selectedAsset, pb]);
+  }, [selectedAsset, revisionRefresh, pb]);
 
   const handleUploadSuccess = () => {
     setIsFormOpen(false);
-    const currentAsset = selectedAsset;
-    setSelectedAsset("");
-    setTimeout(() => setSelectedAsset(currentAsset), 0);
+    setRevisionRefresh((previous) => previous + 1);
   };
 
   const selectedClientRec = clients.find((c) => c.id === selectedClient);
@@ -333,7 +335,7 @@ const Home: React.FC = () => {
                       <div key={revision.id} style={{ position: "relative" }}>
                         {compareMode && (
                           <button
-                            aria-pressed={isSelectedForCompare} aria-label={`Select revision ${revision.title || revision.version} for comparison`}
+                            aria-pressed={isSelectedForCompare} aria-label={`Select revision ${revision.title || formatRevisionLabel(revision.versionNumber)} for comparison`}
                             onClick={() => {
                               setSelectedForCompare((prev) => {
                                 if (prev.includes(revision.id)) return prev.filter((id) => id !== revision.id);

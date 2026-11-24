@@ -29,6 +29,3 @@ PROJECT_DOCUMENTATION.md
 WARP.md
 /docs/
 /design-md/
-
-# Lock files
-package-lock.json

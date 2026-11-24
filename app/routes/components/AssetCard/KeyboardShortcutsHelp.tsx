@@ -19,7 +19,7 @@ const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
             onClick={onClose}
         >
             <div
-                className="animate-apple-scale-in"
+                className="av-anim-scale-in"
                 style={{
                     background: "var(--bg-elevated)",
                     borderRadius: "var(--radius-xl)",
@@ -29,13 +29,13 @@ const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
                     maxWidth: 420,
                     width: "100%",
                     margin: "0 16px",
-                    fontFamily: "var(--font-apple)",
+                    fontFamily: "var(--font-sans)",
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-4">
                     <h3 style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text-primary)", margin: 0 }}>
-                        ⌨️ Keyboard Shortcuts
+                        Keyboard shortcuts
                     </h3>
                     <button
                         onClick={onClose}

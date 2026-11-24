@@ -1,3 +1,4 @@
+import { useModalHistory } from "../../hooks/useModalHistory";
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import type { AssetRevision } from "../../types";
 
@@ -143,6 +144,8 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
         return `${m}:${sec.toString().padStart(2, "0")}`;
     };
 
+    useModalHistory(true, onClose, "compare");
+
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
         <div
@@ -154,7 +157,7 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
             background: "rgba(20,20,22,0.92)",
             backdropFilter: "blur(20px)",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
-            fontFamily: "var(--font-apple)",
+            fontFamily: "var(--font-sans)",
           }}
         >
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -168,9 +171,9 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
-                            fontFamily: "var(--font-apple)",
+                            fontFamily: "var(--font-sans)",
                             background: mode === "side-by-side" ? "var(--accent)" : "transparent",
-                            color: mode === "side-by-side" ? "#fff" : "rgba(255,255,255,0.6)",
+                            color: mode === "side-by-side" ? "var(--color-accent-ink)" : "rgba(255,255,255,0.6)",
                             transition: "var(--transition)",
                         }}
                     >
@@ -184,9 +187,9 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                             fontWeight: 500,
                             border: "none",
                             cursor: "pointer",
-                            fontFamily: "var(--font-apple)",
+                            fontFamily: "var(--font-sans)",
                             background: mode === "slider" ? "var(--accent)" : "transparent",
-                            color: mode === "slider" ? "#fff" : "rgba(255,255,255,0.6)",
+                            color: mode === "slider" ? "var(--color-accent-ink)" : "rgba(255,255,255,0.6)",
                             transition: "var(--transition)",
                         }}
                     >
@@ -225,8 +228,8 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                         <div className="flex-1 flex flex-col border-r border-gray-700">
                         <div style={{ padding: "8px 12px", background: "rgba(20,20,22,0.85)", backdropFilter: "blur(12px)", textAlign: "center" }}>
                                 <span style={{ color: "#F5F5F7", fontSize: 13, fontWeight: 500 }}>{revisionA.title || "Untitled"}</span>
-                                <span style={{ marginLeft: 6, background: "var(--accent)", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
-                                    v{revisionA.versionNumber || 1}
+                                <span style={{ marginLeft: 6, background: "rgba(255,255,255,0.14)", color: "#F5F5F4", fontFamily: "var(--font-mono)", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
+                                    R{String(revisionA.versionNumber || 1).padStart(2, "0")}
                                 </span>
                             </div>
                             <div className="flex-1 flex items-center justify-center bg-black">
@@ -243,8 +246,8 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                         <div className="flex-1 flex flex-col">
                         <div style={{ padding: "8px 12px", background: "rgba(20,20,22,0.85)", backdropFilter: "blur(12px)", textAlign: "center" }}>
                                 <span style={{ color: "#F5F5F7", fontSize: 13, fontWeight: 500 }}>{revisionB.title || "Untitled"}</span>
-                                <span style={{ marginLeft: 6, background: "var(--success)", color: "#fff", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
-                                    v{revisionB.versionNumber || 1}
+                                <span style={{ marginLeft: 6, background: "var(--accent)", color: "var(--color-accent-ink)", fontFamily: "var(--font-mono)", fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
+                                    R{String(revisionB.versionNumber || 1).padStart(2, "0")}
                                 </span>
                             </div>
                             <div className="flex-1 flex items-center justify-center bg-black">
@@ -295,11 +298,11 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                             </div>
                         </div>
 
-                        <div style={{ position: "absolute", top: 12, left: 12, background: "var(--accent)", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
-                            {revisionA.title || "Untitled"} (v{revisionA.versionNumber || 1})
+                        <div style={{ position: "absolute", top: 12, left: 12, background: "rgba(20,20,22,0.85)", color: "#F5F5F4", border: "1px solid rgba(255,255,255,0.16)", fontFamily: "var(--font-mono)", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
+                            {revisionA.title || "Untitled"} (R{String(revisionA.versionNumber || 1).padStart(2, "0")})
                         </div>
-                        <div style={{ position: "absolute", top: 12, right: 12, background: "var(--success)", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
-                            {revisionB.title || "Untitled"} (v{revisionB.versionNumber || 1})
+                        <div style={{ position: "absolute", top: 12, right: 12, background: "var(--accent)", color: "var(--color-accent-ink)", fontFamily: "var(--font-mono)", fontSize: 11, padding: "4px 10px", borderRadius: 99, zIndex: 20, fontWeight: 600 }}>
+                            {revisionB.title || "Untitled"} (R{String(revisionB.versionNumber || 1).padStart(2, "0")})
                         </div>
                     </div>
                 )}
@@ -314,7 +317,7 @@ const RevisionCompare: React.FC<RevisionCompareProps> = ({
                 background: "rgba(20,20,22,0.92)",
                 backdropFilter: "blur(20px)",
                 borderTop: "1px solid rgba(255,255,255,0.08)",
-                fontFamily: "var(--font-apple)",
+                fontFamily: "var(--font-sans)",
               }}
             >
                 {/* Play/Pause */}

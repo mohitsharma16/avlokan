@@ -273,7 +273,7 @@ export default function RevisionViewer() {
   if (!isAuthorized) {
     return (
       <div
-        className="animate-apple-fade-in"
+        className="av-anim-fade-in"
         style={{
           minHeight: "100svh",
           display: "flex",
@@ -281,11 +281,11 @@ export default function RevisionViewer() {
           justifyContent: "center",
           background: "var(--bg)",
           padding: 24,
-          fontFamily: "var(--font-apple)",
+          fontFamily: "var(--font-sans)",
         }}
       >
         <div
-          className="animate-apple-scale-in"
+          className="av-anim-scale-in"
           style={{
             background: "var(--bg-elevated)",
             border: "1px solid var(--border)",
@@ -296,7 +296,7 @@ export default function RevisionViewer() {
             width: "100%",
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--accent)" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--color-accent-text)" }}>
             Avlokan
           </span>
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text-primary)", margin: "8px 0 4px" }}>
@@ -313,8 +313,8 @@ export default function RevisionViewer() {
                 style={{
                   marginBottom: 16,
                   padding: 10,
-                  background: "rgba(255, 69, 58, 0.1)",
-                  border: "1px solid rgba(255, 69, 58, 0.25)",
+                  background: "color-mix(in srgb, var(--danger) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--danger) 25%, transparent)",
                   color: "var(--danger)",
                   borderRadius: "var(--radius-md)",
                   fontSize: 13,
@@ -328,7 +328,7 @@ export default function RevisionViewer() {
               type="email"
               name="email"
               placeholder="you@company.com"
-              className="apple-input"
+              className="av-input"
               style={{ marginBottom: 16 }}
               required
               disabled={navigation.state === "submitting"}
@@ -336,7 +336,7 @@ export default function RevisionViewer() {
             <button
               type="submit"
               disabled={navigation.state === "submitting"}
-              className="apple-btn-primary"
+              className="av-btn av-btn-primary"
               style={{ width: "100%" }}
             >
               {navigation.state === "submitting"
@@ -350,10 +350,10 @@ export default function RevisionViewer() {
   }
 
   return (
-    <div style={{ minHeight: "100svh", background: "var(--bg)", fontFamily: "var(--font-apple)" }}>
+    <div style={{ minHeight: "100svh", background: "var(--bg)", fontFamily: "var(--font-sans)" }}>
       <div style={{ background: "var(--bg-elevated)", borderBottom: "1px solid var(--border)" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 24px" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--accent)" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "-0.01em", color: "var(--color-accent-text)" }}>
             Avlokan
           </span>
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "4px 0 0" }}>
@@ -434,11 +434,11 @@ export default function RevisionViewer() {
                       alignItems: "center",
                       gap: 6,
                       padding: "9px 16px",
-                      borderRadius: "var(--radius-pill)",
+                      borderRadius: "var(--av-radius-md)",
                       border: isAnnotating ? "1px solid var(--danger)" : "none",
-                      background: isAnnotating ? "rgba(255, 69, 58, 0.12)" : "var(--accent)",
-                      color: isAnnotating ? "var(--danger)" : "#fff",
-                      fontFamily: "var(--font-apple)",
+                      background: isAnnotating ? "color-mix(in srgb, var(--danger) 12%, transparent)" : "var(--accent)",
+                      color: isAnnotating ? "var(--danger)" : "var(--color-accent-ink)",
+                      fontFamily: "var(--font-sans)",
                       fontSize: 14,
                       fontWeight: 500,
                       letterSpacing: "-0.01em",

@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { Mark } from "../landing/icons";
 
 export default function AuthForm() {
   const { login, pb } = useAuth();
@@ -7,6 +9,7 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const errorId = useId();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,123 +30,62 @@ export default function AuthForm() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--bg)",
-        fontFamily: "var(--font-apple)",
-        padding: "24px",
-      }}
-    >
-      <div
-        className="animate-apple-scale-in"
-        style={{
-          width: "100%",
-          maxWidth: 400,
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-2xl)",
-          boxShadow: "var(--shadow-modal)",
-          padding: "48px 40px 40px",
-        }}
-      >
-        {/* Logo / Brand */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          {/* Apple-style icon mark */}
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 14,
-              background: "var(--accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 18px",
-              boxShadow: "0 6px 16px rgba(0,113,227,0.35)",
-            }}
-          >
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect x="4" y="4" width="20" height="20" rx="4" stroke="#fff" strokeWidth="2.5"/>
-              <path d="M9 14h10M14 9v10" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <h1
-            style={{
-              fontSize: 24,
-              fontWeight: 700,
-              letterSpacing: "-0.03em",
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
-          >
-            Sign in to Avlokan
-          </h1>
-          <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>
-            Use your work email and password
+    <div className="av-auth" style={{ minHeight: "100vh", display: "grid", background: "var(--color-bg)", fontFamily: "var(--font-sans)" }}>
+      {/* Brand side — hidden on small screens so the form comes first */}
+      <aside className="av-auth-brand" aria-hidden style={{ position: "relative", overflow: "hidden", padding: "48px 56px", flexDirection: "column", justifyContent: "space-between", background: "#09090B", color: "#F5F5F4", borderRight: "1px solid var(--color-border)" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 20% 0%, rgba(255,107,74,0.18), transparent 60%)" }} />
+        <div className="av-grid-bg" style={{ position: "absolute", inset: 0, opacity: 0.4 }} />
+        <Link to="/" tabIndex={-1} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, fontWeight: 650, fontSize: 19, letterSpacing: "-0.03em", color: "inherit", textDecoration: "none" }}>
+          <Mark size={24} /> Avlokan
+        </Link>
+        <div style={{ position: "relative" }}>
+          <p className="av-display" style={{ margin: 0, fontSize: "clamp(40px, 4.4vw, 64px)" }}>
+            Creative feedback.<br /><span style={{ color: "#A1A1AA" }}>Finally in focus.</span>
+          </p>
+          <p style={{ marginTop: 20, maxWidth: 380, fontSize: 16, lineHeight: 1.55, color: "#A1A1AA" }}>
+            Annotations, conversations and revisions in one visual review workflow.
           </p>
         </div>
+      </aside>
 
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {error && (
-            <div
-              style={{
-                padding: "10px 14px",
-                background: "rgba(255,69,58,0.08)",
-                border: "1px solid rgba(255,69,58,0.2)",
-                borderRadius: "var(--radius-md)",
-                color: "#FF453A",
-                fontSize: 13,
-                textAlign: "center",
-              }}
-            >
-              {error}
+      <main style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="av-anim-fade-in" style={{ width: "100%", maxWidth: 380 }}>
+          <span className="av-auth-mobile-brand" style={{ alignItems: "center", gap: 9, fontWeight: 650, fontSize: 19, letterSpacing: "-0.03em", marginBottom: 40 }}>
+            <Mark size={24} /> Avlokan
+          </span>
+          <h1 style={{ fontSize: 30, fontWeight: 650, letterSpacing: "-0.035em", margin: 0 }}>Sign in</h1>
+          <p style={{ fontSize: 15, color: "var(--color-text-secondary)", margin: "8px 0 32px" }}>Use your work email and password.</p>
+
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }} aria-describedby={error ? errorId : undefined}>
+            {error && (
+              <div id={errorId} role="alert" style={{ padding: "10px 14px", background: "color-mix(in srgb, var(--color-danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)", borderRadius: "var(--av-radius-md)", color: "var(--color-danger)", fontSize: 13 }}>
+                {error}
+              </div>
+            )}
+            <div>
+              <label className="av-label" htmlFor="av-email">Email</label>
+              <input id="av-email" type="email" name="email" autoComplete="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="av-input" />
             </div>
-          )}
+            <div>
+              <label className="av-label" htmlFor="av-password">Password</label>
+              <input id="av-password" type="password" name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="av-input" />
+            </div>
+            <button type="submit" disabled={loading} className="av-btn av-btn-primary av-btn-lg" style={{ marginTop: 8, width: "100%" }}>
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </div>
+      </main>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="apple-input"
-            />
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="apple-input"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="apple-btn-primary"
-            style={{ marginTop: 8, width: "100%", padding: "13px 22px", fontSize: 16 }}
-          >
-            {loading ? "Signing in…" : "Sign In"}
-          </button>
-        </form>
-      </div>
+      <style>{`
+        .av-auth-brand { display: none; }
+        .av-auth-mobile-brand { display: inline-flex; }
+        @media (min-width: 900px) {
+          .av-auth { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+          .av-auth-brand { display: flex; }
+          .av-auth-mobile-brand { display: none; }
+        }
+      `}</style>
     </div>
   );
 }

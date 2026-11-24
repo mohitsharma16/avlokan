@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { AssetCardProps, PBUser } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
+import { useModalHistory } from "../../hooks/useModalHistory";
 import { useAnnotations } from "./useAnnotations";
 import type { AnnotationTool } from "./useAnnotations";
 import { useCommentEditor } from "./useCommentEditor";
@@ -13,8 +14,9 @@ import AIReviewPanel from "./AIReviewPanel";
 import VideoTimeline from "./VideoTimeline";
 import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp";
 import { generateShareLink } from "./utils";
+import { Badge, type Status } from "../design";
 
-const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
+const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) => {
   const { user, pb } = useAuth();
   const videoUrl = revision.video
     ? pb.files.getURL(revision, revision.video)
@@ -24,6 +26,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [showModal, setShowModal] = useState(false);
+  useModalHistory(showModal, () => setShowModal(false), `review-${revision.id}`);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
@@ -332,30 +335,28 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
     }
   };
 
+  // Review-level status derived from this revision's tasks
+  const taskCounts = {
+    open: tasks.filter((t: any) => t.status === "open").length,
+    in_progress: tasks.filter((t: any) => t.status === "in_progress").length,
+    done: tasks.filter((t: any) => t.status === "done").length,
+  };
+  const reviewStatus: Status =
+    tasks.length === 0 ? "in_review"
+    : taskCounts.done === tasks.length ? "resolved"
+    : taskCounts.in_progress > 0 ? "in_progress"
+    : "changes_requested";
+
   return (
     <>
-      <div
+      <article
         onClick={() => setShowModal(true)}
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-card)",
-          overflow: "hidden",
-          cursor: "pointer",
-          transition: "var(--transition)",
-          fontFamily: "var(--font-apple)",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-hover)";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-card)";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        }}
+        className="av-surface av-surface-interactive"
+        role="button" tabIndex={0} aria-label={`Open review: ${revision.title || "Untitled revision"}`}
+        onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); setShowModal(true); } }}
+        style={{ overflow: "hidden", cursor: "pointer", fontFamily: "var(--font-sans)" }}
       >
-        <div style={{ width: "100%", aspectRatio: "16/9", background: "var(--bg)" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", background: "var(--color-bg-tertiary)" }}>
           {videoUrl && (
             <video
               src={videoUrl}
@@ -364,168 +365,142 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               onClick={(e) => e.stopPropagation()}
             />
           )}
+          <span className="av-badge av-badge-plain av-mono" style={{ position: "absolute", top: 10, left: 10, background: "rgba(9,9,11,0.72)", color: "#F5F5F4", borderColor: "rgba(255,255,255,0.16)", backdropFilter: "blur(6px)", pointerEvents: "none" }}>
+            R{String(revision.versionNumber || 1).padStart(2, "0")}
+          </span>
         </div>
-        <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {revision.title || "Untitled Revision"}
-          </h3>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-              {new Date(revision.created).toLocaleString()}
-            </span>
-            <span style={{
-              background: "rgba(48,209,88,0.12)",
-              color: "#30D158",
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "3px 8px",
-              borderRadius: "var(--radius-pill)",
-            }}>
-              v{revision.versionNumber || 1}
-            </span>
-          </div>
-          {!!revision.description && (
-            <div
-              style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: "1.5" }}
-              dangerouslySetInnerHTML={{ __html: revision.description }}
-            />
-          )}
-          <div style={{ paddingTop: 4 }}>
-            <button
-              onClick={handleShareClick}
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "var(--accent)",
-                background: "rgba(0,113,227,0.08)",
-                border: "none",
-                borderRadius: "var(--radius-pill)",
-                padding: "5px 14px",
-                cursor: "pointer",
-                transition: "var(--transition)",
-                fontFamily: "var(--font-apple)",
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.15)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(0,113,227,0.08)")}
-            >
+        <div style={{ padding: "14px 16px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, letterSpacing: "-0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {revision.title || "Untitled revision"}
+            </h3>
+            <button onClick={handleShareClick} className="av-btn av-btn-ghost av-btn-sm" style={{ flexShrink: 0, color: "var(--color-accent-text)" }} aria-label="Copy share link">
               Share
             </button>
           </div>
+          <time className="av-mono" style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+            {new Date(revision.created).toLocaleString()}
+          </time>
+          {!!revision.description && (
+            <div
+              style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5, maxHeight: 60, overflow: "hidden" }}
+              dangerouslySetInnerHTML={{ __html: revision.description }}
+            />
+          )}
         </div>
-      </div>
+      </article>
 
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "stretch" }}>
-          <div style={{ position: "relative", background: "var(--bg-elevated)", width: "100%", height: "100%", display: "flex" }}>
-            <div className="flex-1 bg-black relative" ref={containerRef}>
-              {videoUrl && (
-                <>
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-contain"
-                    style={{ position: 'relative', zIndex: 1 }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      zIndex: 10,
-                      pointerEvents: isAnnotating ? 'auto' : 'none',
-                    }}
-                  >
-                    <canvas
-                      ref={canvasRef}
-                    />
-                  </div>
-                </>
-              )}
+        <div role="dialog" aria-modal="true" aria-label={`Review: ${revision.title || "Untitled revision"}`} style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--color-bg)", display: "flex", flexDirection: "column", fontFamily: "var(--font-sans)" }}>
+          {/* ── Review header: path · revision · status · tasks ── */}
+          <header style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 56, padding: "0 16px", borderBottom: "1px solid var(--color-border)", background: "var(--color-bg-secondary)", flexWrap: "wrap" }}>
+            <button onClick={() => setShowModal(false)} className="av-btn av-btn-secondary" aria-label="Back to revisions">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+              Back
+              <span className="av-kbd" style={{ marginLeft: 2 }}>Esc</span>
+            </button>
 
-              {/* Zoom Toolbar */}
-              <div className="absolute bottom-10 left-4 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1">
-                <button onClick={zoomOut} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom out">−</button>
-                <span className="text-white text-xs font-mono min-w-[36px] text-center">{Math.round(zoomLevel * 100)}%</span>
-                <button onClick={zoomIn} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom in">+</button>
-                {isZoomed && (
-                  <button onClick={resetZoom} className="text-white text-xs px-1.5 py-0.5 hover:bg-white/20 rounded ml-1" title="Reset zoom">⟲</button>
+            <nav aria-label="Path" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, fontSize: 13.5, color: "var(--color-text-tertiary)" }}>
+              {[...context, revision.title || "Untitled revision"].map((c, i, arr) => (
+                <React.Fragment key={`${c}-${i}`}>
+                  {i > 0 && <span aria-hidden>/</span>}
+                  <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220, color: i === arr.length - 1 ? "var(--color-text-primary)" : undefined, fontWeight: i === arr.length - 1 ? 600 : 400 }}>{c}</span>
+                </React.Fragment>
+              ))}
+            </nav>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="av-badge av-badge-plain av-mono" style={{ color: "var(--color-accent-text)", borderColor: "var(--color-accent)" }}>
+                R{String(revision.versionNumber || 1).padStart(2, "0")}
+              </span>
+              <Badge status={reviewStatus} />
+              <span className="av-mono" style={{ fontSize: 11.5, color: "var(--color-text-secondary)" }} aria-label="Task summary">
+                {tasks.length === 0
+                  ? "No tasks"
+                  : `${tasks.length} task${tasks.length !== 1 ? "s" : ""} · ${taskCounts.in_progress} in progress · ${taskCounts.done} done`}
+              </span>
+            </div>
+
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={handleShareClick} className="av-btn av-btn-secondary av-btn-sm">Share</button>
+              <button onClick={toggleAnnotating} className={`av-btn av-btn-sm ${isAnnotating ? "av-btn-danger" : "av-btn-primary"}`} aria-pressed={isAnnotating}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  {isAnnotating ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 00-3-3L5 16l-1 4z" />}
+                </svg>
+                {isAnnotating ? "Exit annotation" : "Annotate"}
+              </button>
+            </div>
+          </header>
+
+          <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+            {/* ── Left: frame + docked timeline ── */}
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <div className="flex-1 bg-black relative" ref={containerRef} style={{ minHeight: 0 }}>
+                {videoUrl && (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                      style={{ position: 'relative', zIndex: 1 }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 10,
+                        pointerEvents: isAnnotating ? 'auto' : 'none',
+                      }}
+                    >
+                      <canvas ref={canvasRef} />
+                    </div>
+                  </>
+                )}
+
+                {/* Zoom Toolbar */}
+                <div className="absolute bottom-14 left-4 z-20 flex items-center gap-1 backdrop-blur-sm px-1.5 py-1" style={{ background: "rgba(9,9,11,0.72)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--av-radius-md)" }}>
+                  <button onClick={zoomOut} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom out" aria-label="Zoom out">−</button>
+                  <span className="text-white text-xs font-mono min-w-[36px] text-center">{Math.round(zoomLevel * 100)}%</span>
+                  <button onClick={zoomIn} className="text-white text-sm px-1.5 py-0.5 hover:bg-white/20 rounded" title="Zoom in" aria-label="Zoom in">+</button>
+                  {isZoomed && (
+                    <button onClick={resetZoom} className="text-white text-xs px-1.5 py-0.5 hover:bg-white/20 rounded ml-1" title="Reset zoom" aria-label="Reset zoom">Reset</button>
+                  )}
+                </div>
+
+                {/* Annotation Toolbar */}
+                {isAnnotating && (
+                  <AnnotationToolbar
+                    annotationTool={annotationTool}
+                    setAnnotationTool={setAnnotationTool}
+                    brushColor={brushColor}
+                    setBrushColor={setBrushColor}
+                    brushSize={brushSize}
+                    setBrushSize={setBrushSize}
+                    annotationDuration={annotationDuration}
+                    setAnnotationDuration={setAnnotationDuration}
+                    onSave={saveAnnotation}
+                    onClear={clearCurrentAnnotations}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    snapToGrid={snapToGrid}
+                    onToggleSnap={() => setSnapToGrid((p) => !p)}
+                    gridSize={gridSize}
+                    onGridSizeChange={setGridSize}
+                    cursorPosition={cursorPosition}
+                    shapeSize={shapeSize}
+                  />
                 )}
               </div>
 
-              {/* Annotation Toolbar */}
-              {isAnnotating && (
-                <AnnotationToolbar
-                  annotationTool={annotationTool}
-                  setAnnotationTool={setAnnotationTool}
-                  brushColor={brushColor}
-                  setBrushColor={setBrushColor}
-                  brushSize={brushSize}
-                  setBrushSize={setBrushSize}
-                  annotationDuration={annotationDuration}
-                  setAnnotationDuration={setAnnotationDuration}
-                  onSave={saveAnnotation}
-                  onClear={clearCurrentAnnotations}
-                  onUndo={undo}
-                  onRedo={redo}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  snapToGrid={snapToGrid}
-                  onToggleSnap={() => setSnapToGrid((p) => !p)}
-                  gridSize={gridSize}
-                  onGridSizeChange={setGridSize}
-                  cursorPosition={cursorPosition}
-                  shapeSize={shapeSize}
-                />
-              )}
-
-              {/* Annotation Toggle Button */}
-              <button
-                onClick={toggleAnnotating}
-                className="absolute top-4 right-4 z-20 animate-apple-scale-in"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "9px 16px",
-                  borderRadius: "var(--radius-pill)",
-                  border: isAnnotating ? "1px solid var(--danger)" : "none",
-                  background: isAnnotating ? "rgba(255, 69, 58, 0.12)" : "var(--accent)",
-                  color: isAnnotating ? "var(--danger)" : "#fff",
-                  fontFamily: "var(--font-apple)",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  letterSpacing: "-0.01em",
-                  boxShadow: isAnnotating ? "none" : "var(--shadow-card)",
-                  cursor: "pointer",
-                  transition: "var(--transition)",
-                  backdropFilter: "blur(20px)",
-                  WebkitBackdropFilter: "blur(20px)",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = isAnnotating
-                    ? "rgba(255, 69, 58, 0.20)"
-                    : "var(--accent-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = isAnnotating
-                    ? "rgba(255, 69, 58, 0.12)"
-                    : "var(--accent)";
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  {isAnnotating
-                    ? <path d="M6 18L18 6M6 6l12 12" />
-                    : <path d="M4 20l4-1 10-10a2.121 2.121 0 00-3-3L5 16l-1 4z" />}
-                </svg>
-                {isAnnotating ? 'Exit Annotation' : 'Annotate'}
-              </button>
-
-              {/* Video Timeline with markers */}
-              <div className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-1">
+              {/* Docked timeline: playhead, comment + annotation markers */}
+              <div style={{ borderTop: "1px solid var(--color-border)", background: "var(--color-bg-secondary)", padding: "10px 16px 12px" }}>
                 <VideoTimeline
                   videoRef={videoRef}
                   comments={comments}
@@ -536,11 +511,12 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </div>
             </div>
 
+            {/* ── Right: comments + AI review ── */}
             <div
               style={{
                 width: `${sidebarWidth}px`,
-                background: "var(--bg-elevated)",
-                borderLeft: "1px solid var(--border)",
+                background: "var(--color-bg-secondary)",
+                borderLeft: "1px solid var(--color-border)",
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 0,
@@ -558,7 +534,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
                   commentText={commentText}
                   timeRangeDuration={timeRangeDuration}
                   onTimeRangeDurationChange={setTimeRangeDuration}
-                  onClose={() => setShowModal(false)}
                   onResizeStart={handleResizeStart}
                   onSeekToTimestamp={seekToTimestamp}
                   onExecuteCommand={executeCommand}
@@ -592,7 +567,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision }: any) => {
               </div>
             </div>
           </div>
-        </div >
+        </div>
       )}
 
       {/* Keyboard Shortcuts Help Overlay */}

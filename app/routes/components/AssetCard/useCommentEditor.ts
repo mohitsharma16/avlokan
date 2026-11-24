@@ -57,8 +57,10 @@ export function useCommentEditor({
             setAllUsers(
                 res.map((u: any) => ({
                     id: u.id,
-                    email: u.email,
-                    name: u.name || u.email.split("@")[0],
+                    // PocketBase hides `email` for users with emailVisibility = false
+                    // (e.g. reviewers created from share links), so it can be undefined.
+                    email: u.email ?? "",
+                    name: u.name || (u.email ? u.email.split("@")[0] : "Reviewer"),
                     avatar: u.avatar,
                 }))
             );

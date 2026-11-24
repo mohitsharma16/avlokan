@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { Modal } from "../design";
 import type { Asset, AssetRevision, Comment, Annotation } from "../../types";
 
 interface AssetTimelineProps {
@@ -104,184 +105,104 @@ const AssetTimeline: React.FC<AssetTimelineProps> = ({ asset, revisions, onClose
         fetchTimelineData();
     }, [asset, revisions, pb]);
 
+    const iconProps = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
     const getIcon = (type: TimelineEvent["type"]) => {
         switch (type) {
-            case "asset_created": return "📄";
-            case "revision_uploaded": return "🎬";
-            case "comment_added": return "💬";
-            case "annotation_added": return "✏️";
-            default: return "●";
+            case "asset_created": return <svg {...iconProps}><path d="M12 5v14M5 12h14" /></svg>;
+            case "revision_uploaded": return <svg {...iconProps}><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M10 9.5v5l4.5-2.5z" /></svg>;
+            case "comment_added": return <svg {...iconProps}><path d="M20 12a7.5 7.5 0 01-11 6.6L4 20l1.4-4.6A7.5 7.5 0 1120 12z" /></svg>;
+            case "annotation_added": return <svg {...iconProps}><path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 00-3-3L5 16l-1 4z" /></svg>;
+            default: return <svg {...iconProps}><circle cx="12" cy="12" r="3" /></svg>;
         }
     };
 
+    /** Marker colour by event kind — monochrome by default, accent for the events that matter to a review. */
     const getColor = (type: TimelineEvent["type"]) => {
         switch (type) {
-            case "asset_created": return "var(--accent)";
-            case "revision_uploaded": return "#30D158";
-            case "comment_added": return "#FF9F0A";
-            case "annotation_added": return "#BF5AF2";
-            default: return "var(--text-tertiary)";
+            case "revision_uploaded": return "var(--color-accent)";
+            case "comment_added": return "var(--color-text-primary)";
+            case "annotation_added": return "var(--color-accent-soft)";
+            default: return "var(--color-text-tertiary)";
         }
+    };
+
+    const KIND_LABEL: Record<TimelineEvent["type"], string> = {
+        asset_created: "Asset",
+        revision_uploaded: "Revision",
+        comment_added: "Comment",
+        annotation_added: "Annotation",
     };
 
     return (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            padding: 24,
-            fontFamily: "var(--font-apple)",
-          }}
-        >
-            <div
-              className="animate-apple-scale-in"
-              style={{
-                background: "var(--bg-elevated)",
-                width: "100%",
-                maxWidth: 640,
-                height: "80vh",
-                borderRadius: "var(--radius-xl)",
-                boxShadow: "var(--shadow-modal)",
-                border: "1px solid var(--border)",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-                {/* Header */}
-                <div style={{
-                  padding: "24px 28px 20px",
-                  borderBottom: "1px solid var(--border)",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                }}>
+        <Modal open onClose={onClose} title="Asset timeline" maxWidth={680}>
+            <div style={{ display: "flex", flexDirection: "column", height: "80vh", fontFamily: "var(--font-sans)" }}>
+                <div style={{ padding: "22px 28px 18px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                     <div>
-                        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: 0 }}>Asset Timeline</h2>
-                        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>{asset.name}</p>
+                        <p className="av-eyebrow" style={{ margin: 0, fontSize: 11 }}>Asset timeline</p>
+                        <h2 style={{ fontSize: 20, fontWeight: 650, letterSpacing: "-0.03em", margin: "6px 0 0" }}>{asset?.name}</h2>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: "50%",
-                          border: "none",
-                          background: "var(--bg)",
-                          color: "var(--text-secondary)",
-                          fontSize: 18,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                        }}
-                    >
-                        ×
+                    <button onClick={onClose} className="av-btn av-btn-icon" aria-label="Close timeline" data-tip="Close">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
                     </button>
                 </div>
 
-                {/* Content */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "28px 28px" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px", background: "var(--color-bg-secondary)" }}>
                     {loading ? (
-                        <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-                            <div style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: "50%",
-                              border: "2.5px solid var(--border)",
-                              borderTopColor: "var(--accent)",
-                              animation: "spin 0.7s linear infinite",
-                            }} />
-                            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Fetching history…</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }} aria-busy="true" aria-label="Fetching history">
+                            {[0, 1, 2, 3].map((i) => <div key={i} className="av-skeleton" style={{ height: 76 }} />)}
                         </div>
                     ) : events.length === 0 ? (
-                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 14 }}>
-                            No activity found for this asset.
+                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-tertiary)", fontSize: 14 }}>
+                            No activity on this asset yet.
                         </div>
                     ) : (
-                        <div style={{ position: "relative" }}>
-                            {/* Vertical line */}
-                            <div style={{ position: "absolute", left: 14, top: 0, bottom: 0, width: 1, background: "var(--border)" }} />
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                        <ol style={{ position: "relative", listStyle: "none", margin: 0, padding: 0 }}>
+                            {/* Playhead rail: subtle grid ticks with a warm line */}
+                            <div aria-hidden style={{ position: "absolute", left: 13, top: 6, bottom: 6, width: 2, borderRadius: 2, background: "linear-gradient(var(--color-accent), color-mix(in srgb, var(--color-accent) 10%, transparent))" }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                                 {events.map((event) => (
-                                    <div key={event.id} style={{ position: "relative", paddingLeft: 44 }}>
-                                        {/* Dot */}
-                                        <div style={{
-                                          position: "absolute",
-                                          left: 0,
-                                          width: 28,
-                                          height: 28,
-                                          borderRadius: "50%",
-                                          background: getColor(event.type),
-                                          border: "3px solid var(--bg-elevated)",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          fontSize: 13,
-                                          zIndex: 1,
-                                          top: 4,
-                                        }}>
+                                    <li key={event.id} style={{ position: "relative", paddingLeft: 44 }}>
+                                        <span
+                                            aria-hidden
+                                            style={{ position: "absolute", left: 0, top: 6, width: 28, height: 28, borderRadius: "var(--av-radius-sm)", background: "var(--color-surface-elevated)", border: "1px solid var(--color-border-strong)", color: getColor(event.type), display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}
+                                        >
                                             {getIcon(event.type)}
-                                        </div>
+                                        </span>
 
-                                        {/* Card */}
-                                        <div style={{
-                                          background: "var(--bg)",
-                                          border: "1px solid var(--border)",
-                                          borderRadius: "var(--radius-md)",
-                                          padding: "14px 16px",
-                                          transition: "var(--transition)",
-                                        }}>
-                                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
-                                                <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.01em" }}>{event.title}</h3>
-                                                <time style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0, marginLeft: 12 }}>
+                                        <div className="av-surface" style={{ padding: "12px 16px", borderRadius: "var(--av-radius-md)" }}>
+                                            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                                                <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: "-0.01em" }}>{event.title}</h3>
+                                                <time className="av-mono" style={{ fontSize: 10.5, color: "var(--color-text-tertiary)", flexShrink: 0 }}>
                                                     {new Date(event.timestamp).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                                                 </time>
                                             </div>
 
                                             {event.user && (
-                                                <p style={{ fontSize: 12, color: "var(--accent)", marginBottom: 4, fontWeight: 500 }}>By {event.user}</p>
+                                                <p style={{ fontSize: 12, color: "var(--color-accent-text)", margin: "4px 0 0", fontWeight: 550 }}>{event.user}</p>
                                             )}
 
-                                            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: "1.5", margin: 0, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
-                                                {event.description}
-                                            </p>
-
-                                            {event.metadata?.revisionId && (
-                                                <div style={{ marginTop: 8 }}>
-                                                    <span style={{
-                                                      fontSize: 10,
-                                                      fontWeight: 700,
-                                                      background: "rgba(0,113,227,0.08)",
-                                                      color: "var(--accent)",
-                                                      padding: "2px 8px",
-                                                      borderRadius: 99,
-                                                      textTransform: "uppercase",
-                                                      letterSpacing: "0.05em",
-                                                    }}>
-                                                        Rev: {event.metadata.revisionId.slice(-6)}
-                                                    </span>
-                                                </div>
+                                            {event.description && (
+                                                <p style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5, margin: "6px 0 0", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
+                                                    {event.description}
+                                                </p>
                                             )}
+
+                                            <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
+                                                <span className="av-badge av-badge-plain">{KIND_LABEL[event.type]}</span>
+                                                {event.metadata?.revisionId && (
+                                                    <span className="av-badge av-badge-plain av-mono">rev {String(event.metadata.revisionId).slice(-6)}</span>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    </li>
                                 ))}
                             </div>
-                        </div>
+                        </ol>
                     )}
                 </div>
             </div>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
+        </Modal>
     );
 };
 

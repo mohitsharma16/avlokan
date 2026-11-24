@@ -26,6 +26,14 @@ npm install
 
 ### Development
 
+Set `VITE_POCKETBASE_URL` in a local `.env` file before starting the app. For example:
+
+```dotenv
+VITE_POCKETBASE_URL=http://127.0.0.1:8090
+```
+
+For deployment, use a PocketBase URL reachable by both the browser and the application server. Vite embeds this public URL during the build. Rebuild the app when the URL changes.
+
 Start the development server with HMR:
 
 ```bash
@@ -49,7 +57,7 @@ npm run build
 To build and run using Docker:
 
 ```bash
-docker build -t my-app .
+docker build --build-arg VITE_POCKETBASE_URL=https://pb.example.com -t my-app .
 
 # Run the container
 docker run -p 3000:3000 my-app

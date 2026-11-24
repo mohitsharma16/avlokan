@@ -5,9 +5,10 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
-import PocketBase, { type RecordModel } from "pocketbase";
+import type PocketBase from "pocketbase";
+import type { RecordModel } from "pocketbase";
+import pb from "../hooks/usePocketBase";
 
-const pb = new PocketBase("http://127.0.0.1:8090");
 interface IAuthContext {
   pb: PocketBase;
   user: RecordModel | null;

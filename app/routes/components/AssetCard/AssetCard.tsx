@@ -1,3 +1,4 @@
+import { formatRevisionLabel } from "../../utils/revisionVersion";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { AssetCardProps, PBUser } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
@@ -366,7 +367,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) =>
             />
           )}
           <span className="av-badge av-badge-plain av-mono" style={{ position: "absolute", top: 10, left: 10, background: "rgba(9,9,11,0.72)", color: "#F5F5F4", borderColor: "rgba(255,255,255,0.16)", backdropFilter: "blur(6px)", pointerEvents: "none" }}>
-            R{String(revision.versionNumber || 1).padStart(2, "0")}
+            {formatRevisionLabel(revision.versionNumber)}
           </span>
         </div>
         <div style={{ padding: "14px 16px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -411,7 +412,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) =>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="av-badge av-badge-plain av-mono" style={{ color: "var(--color-accent-text)", borderColor: "var(--color-accent)" }}>
-                R{String(revision.versionNumber || 1).padStart(2, "0")}
+                {formatRevisionLabel(revision.versionNumber)}
               </span>
               <Badge status={reviewStatus} />
               <span className="av-mono" style={{ fontSize: 11.5, color: "var(--color-text-secondary)" }} aria-label="Task summary">

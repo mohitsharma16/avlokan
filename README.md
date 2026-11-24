@@ -42,6 +42,20 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
+### PocketBase revision migration
+
+Before deploying the revision upload changes, back up PocketBase and pause uploads. Copy
+`pb_migrations/1795512000_revision_asset_versions.js` into the backend's existing
+`pb_migrations/` directory and run `pocketbase migrate up` against its data directory.
+The migration targets the existing Avlokan schema on PocketBase 0.29.1. It assigns R01,
+R02 and subsequent versions in the order of each asset's legacy revision list. If a
+revision has no parent or multiple links, resolve its ownership and rerun the migration.
+
+Deploy the matching app before resuming uploads. The revision's `asset` relation is
+the authoritative parent. To roll back this release, pause uploads and run
+`pocketbase migrate down 1` while this migration is the most recent. Rollback rebuilds
+the legacy asset lists in version order, including uploads since migration.
+
 ## Building for Production
 
 Create a production build:

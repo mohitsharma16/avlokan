@@ -1,3 +1,4 @@
+import { formatRevisionLabel } from "../../utils/revisionVersion";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Modal } from "../design";
@@ -59,7 +60,7 @@ const AssetTimeline: React.FC<AssetTimelineProps> = ({ asset, revisions, onClose
                     allEvents.push({
                         id: rev.id,
                         type: "revision_uploaded",
-                        title: `Revision v${rev.versionNumber || rev.version || "?"} Uploaded`,
+                        title: `Revision ${formatRevisionLabel(rev.versionNumber)} Uploaded`,
                         description: rev.title,
                         timestamp: rev.created,
                     });

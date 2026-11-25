@@ -138,41 +138,52 @@ const Home: React.FC = () => {
 
     if (!selectedProject) return;
 
+    let current = true;
     const fetchProjectWithAssets = async () => {
       try {
         const project = await pb.collection("projects").getOne(selectedProject, { expand: "project_assets" });
         const expandedAssets = project?.expand?.project_assets ?? [];
-        setAssets(expandedAssets);
+        if (current) setAssets(expandedAssets);
       } catch (err) {
-        console.error("Error fetching project assets:", err);
+        if (current) console.error("Error fetching project assets:", err);
       }
     };
 
     fetchProjectWithAssets();
+    return () => { current = false; };
   }, [selectedProject, pb]);
+
+  useEffect(() => {
+    setCompareMode(false);
+    setSelectedForCompare([]);
+    setShowComparison(false);
+  }, [selectedAsset, selectedProject, selectedClient]);
 
   useEffect(() => {
     setRevisions([]);
     setError(null);
+    setLoading(Boolean(selectedAsset));
+    if (!selectedAsset) return;
+    let current = true;
 
     const fetchRevisions = async () => {
-      if (!selectedAsset) return;
-      setLoading(true);
       try {
         const records = await pb.collection("assets_revision").getFullList<AssetRevision>({
           filter: pb.filter("asset = {:asset}", { asset: selectedAsset }),
           sort: "versionNumber",
         });
-        setRevisions(records);
+        if (current) setRevisions(records);
       } catch (err) {
+        if (!current) return;
         console.error("Error fetching revisions:", err);
         setError("Failed to load asset revisions.");
       } finally {
-        setLoading(false);
+        if (current) setLoading(false);
       }
     };
 
     fetchRevisions();
+    return () => { current = false; };
   }, [selectedAsset, revisionRefresh, pb]);
 
   const handleUploadSuccess = () => {

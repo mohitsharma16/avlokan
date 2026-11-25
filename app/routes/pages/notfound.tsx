@@ -1,6 +1,10 @@
+import { data, Link } from "react-router";
+
 export const handle = { public: true };
 
-import { Link } from "react-router-dom";
+export function loader() {
+  return data(null, { status: 404 });
+}
 
 export default function NotFound() {
   return (

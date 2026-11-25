@@ -81,12 +81,32 @@ const selectableStyle = (selected: boolean): React.CSSProperties => ({
   boxShadow: selected ? "0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent)" : "none",
 });
 
+type RequestStatus = "loading" | "ready" | "error";
+
+function ListFeedback({ status, label, onRetry }: {
+  status: "loading" | "error";
+  label: string;
+  onRetry: () => void;
+}) {
+  if (status === "loading") return <p role="status">Loading {label}…</p>;
+  return (
+    <div>
+      <p role="alert">Couldn’t load {label}.</p>
+      <button type="button" className="av-btn av-btn-secondary" onClick={onRetry} aria-label={`Retry loading ${label}`}>Retry</button>
+    </div>
+  );
+}
+
 const Home: React.FC = () => {
   const { pb, user } = useAuth();
 
   const [clients, setClients] = useState<RecordModel[]>([]);
   const [projects, setProjects] = useState<RecordModel[]>([]);
   const [assets, setAssets] = useState<RecordModel[]>([]);
+  const [clientStatus, setClientStatus] = useState<RequestStatus>("loading");
+  const [assetStatus, setAssetStatus] = useState<RequestStatus>("loading");
+  const [clientAttempt, setClientAttempt] = useState(0);
+  const [assetAttempt, setAssetAttempt] = useState(0);
 
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
@@ -106,16 +126,23 @@ const Home: React.FC = () => {
   const [openClientModal, setOpenClientModal] = useState<RecordModel | null>(null);
 
   useEffect(() => {
+    let current = true;
+    setClientStatus("loading");
     const fetchClients = async () => {
       try {
         const res = await pb.collection("clients").getFullList({ expand: "client_projects" });
+        if (!current) return;
         setClients(res);
+        setClientStatus("ready");
       } catch (err) {
+        if (!current) return;
+        setClientStatus("error");
         console.error("Error fetching clients:", err);
       }
     };
     fetchClients();
-  }, [pb]);
+    return () => { current = false; };
+  }, [pb, clientAttempt]);
 
   useEffect(() => {
     setSelectedProject("");
@@ -138,20 +165,25 @@ const Home: React.FC = () => {
 
     if (!selectedProject) return;
 
+    setAssetStatus("loading");
     let current = true;
     const fetchProjectWithAssets = async () => {
       try {
         const project = await pb.collection("projects").getOne(selectedProject, { expand: "project_assets" });
         const expandedAssets = project?.expand?.project_assets ?? [];
-        if (current) setAssets(expandedAssets);
+        if (!current) return;
+        setAssets(expandedAssets);
+        setAssetStatus("ready");
       } catch (err) {
-        if (current) console.error("Error fetching project assets:", err);
+        if (!current) return;
+        setAssetStatus("error");
+        console.error("Error fetching project assets:", err);
       }
     };
 
     fetchProjectWithAssets();
     return () => { current = false; };
-  }, [selectedProject, pb]);
+  }, [selectedProject, pb, assetAttempt]);
 
   useEffect(() => {
     setCompareMode(false);
@@ -214,8 +246,10 @@ const Home: React.FC = () => {
         </div>
 
         {/* ── Clients ── */}
-        <Section index="01" title="Clients" count={clients.length}>
-          {clients.length === 0 ? (
+        <Section index="01" title="Clients" count={clientStatus === "ready" ? clients.length : undefined}>
+          {clientStatus !== "ready" ? (
+            <ListFeedback status={clientStatus} label="clients" onRetry={() => setClientAttempt(n => n + 1)} />
+          ) : clients.length === 0 ? (
             <Empty title="No clients yet." hint="Clients you have access to will show up here." />
           ) : (
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
@@ -266,7 +300,11 @@ const Home: React.FC = () => {
               {projects.map((project) => {
                 const isSelected = selectedProject === project.id;
                 return (
-                  <button key={project.id} onClick={() => setSelectedProject(project.id)} aria-pressed={isSelected} className="av-surface av-surface-interactive" style={{ ...selectableStyle(isSelected), padding: "16px 18px", borderRadius: "var(--av-radius-lg)" }}>
+                  <button key={project.id} onClick={() => {
+                    if (isSelected) return;
+                    setAssetStatus("loading");
+                    setSelectedProject(project.id);
+                  }} aria-pressed={isSelected} className="av-surface av-surface-interactive" style={{ ...selectableStyle(isSelected), padding: "16px 18px", borderRadius: "var(--av-radius-lg)" }}>
                     <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, letterSpacing: "-0.02em" }}>{project.name}</h3>
                     {project.description && (
                       <p style={{ fontSize: 12.5, color: "var(--color-text-secondary)", margin: "6px 0 0", lineHeight: 1.45, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>
@@ -281,8 +319,13 @@ const Home: React.FC = () => {
         )}
 
         {/* ── Assets ── */}
-        {assets.length > 0 && (
-          <Section index="03" title="Assets" count={assets.length}>
+        {selectedProject && (
+          <Section index="03" title="Assets" count={assetStatus === "ready" ? assets.length : undefined}>
+            {assetStatus !== "ready" ? (
+              <ListFeedback status={assetStatus} label="assets" onRetry={() => setAssetAttempt(n => n + 1)} />
+            ) : assets.length === 0 ? (
+              <Empty title="No assets yet." hint="Assets for this project will show up here." />
+            ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }} role="group" aria-label="Assets">
               {assets.map((asset) => {
                 const isSelected = selectedAsset === asset.id;
@@ -297,6 +340,7 @@ const Home: React.FC = () => {
                 );
               })}
             </div>
+            )}
           </Section>
         )}
 

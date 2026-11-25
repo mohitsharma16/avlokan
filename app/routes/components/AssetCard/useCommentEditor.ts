@@ -43,12 +43,6 @@ export function useCommentEditor({
     // --- Threading state ---
     const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
-    // --- Task assignment state ---
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [assignFilteredUsers, setAssignFilteredUsers] = useState<PBUser[]>([]);
-    const [selectedAssignIndex, setSelectedAssignIndex] = useState(0);
-    const [showAssignDropdown, setShowAssignDropdown] = useState(false);
-
     // Fetch all users for @mentions
     const fetchUsers = useCallback(async () => {
         try {
@@ -178,28 +172,6 @@ export function useCommentEditor({
         }
     };
 
-    const openAssignDropdown = () => {
-        setAssignFilteredUsers(allUsers);
-        setSelectedAssignIndex(0);
-        setShowAssignDropdown(true);
-
-        // Remove $assign text from editor
-        if (editorRef.current && monacoInstance) {
-            const editor = editorRef.current;
-            const position = editor.getPosition();
-            if (position) {
-                const range = new monacoInstance.Range(
-                    position.lineNumber,
-                    commandStartPos + 1,
-                    position.lineNumber,
-                    position.column
-                );
-                editor.executeEdits("remove-command", [{ range, text: "" }]);
-            }
-        }
-        hideCommandPalette();
-    };
-
     const commands: Command[] = [
         {
             id: "current-time",
@@ -214,12 +186,6 @@ export function useCommentEditor({
             description: `Insert a ${timeRangeDuration}-second range starting from current time`,
             action: insertTimeRange,
         },
-        {
-            id: "assign-task",
-            label: "📋 Assign Task",
-            description: "Assign a task to a team member",
-            action: openAssignDropdown,
-        },
     ];
 
     const hideCommandPalette = () => {
@@ -230,9 +196,7 @@ export function useCommentEditor({
 
     const executeCommand = (command: Command) => {
         command.action();
-        if (command.id !== "assign-task") {
-            hideCommandPalette();
-        }
+        hideCommandPalette();
     };
 
     const removePill = (pillId: string) => {
@@ -517,31 +481,6 @@ export function useCommentEditor({
                 }
             }
 
-            // Handle assign dropdown keyboard navigation
-            if (showAssignDropdown) {
-                if (e.keyCode === monacoInstance.KeyCode.DownArrow) {
-                    e.preventDefault();
-                    setSelectedAssignIndex((prev) =>
-                        prev < assignFilteredUsers.length - 1 ? prev + 1 : 0
-                    );
-                    return;
-                } else if (e.keyCode === monacoInstance.KeyCode.UpArrow) {
-                    e.preventDefault();
-                    setSelectedAssignIndex((prev) =>
-                        prev > 0 ? prev - 1 : assignFilteredUsers.length - 1
-                    );
-                    return;
-                } else if (e.keyCode === monacoInstance.KeyCode.Enter) {
-                    e.preventDefault();
-                    // Selection handled externally
-                    return;
-                } else if (e.keyCode === monacoInstance.KeyCode.Escape) {
-                    e.preventDefault();
-                    setShowAssignDropdown(false);
-                    return;
-                }
-            }
-
             // Existing command palette handling
             if (!showCommandPalette) {
                 if (e.key === "$") {
@@ -617,9 +556,6 @@ export function useCommentEditor({
         showMentionSuggestions,
         filteredUsers,
         selectedMentionIndex,
-        showAssignDropdown,
-        assignFilteredUsers,
-        selectedAssignIndex,
         monacoInstance,
     ]);
 
@@ -650,10 +586,5 @@ export function useCommentEditor({
         replyingTo,
         setReplyingTo,
         cancelReply,
-        // Task assignment
-        showAssignDropdown,
-        setShowAssignDropdown,
-        assignFilteredUsers,
-        selectedAssignIndex,
     };
 }

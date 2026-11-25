@@ -1,6 +1,6 @@
 import { formatRevisionLabel } from "../../utils/revisionVersion";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { AssetCardProps, PBUser } from "../../types";
+import type { AssetCardProps, Comment } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import { useAnnotations } from "./useAnnotations";
@@ -100,10 +100,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) =>
     setReplyingTo,
     cancelReply,
     // Task assignment
-    showAssignDropdown,
-    setShowAssignDropdown,
-    assignFilteredUsers,
-    selectedAssignIndex,
   } = useCommentEditor({
     pb,
     revision,
@@ -137,26 +133,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) =>
     onToggleAnnotating: toggleAnnotating,
     onToggleHelp: () => setShowHelpOverlay((p) => !p),
   });
-
-  // Handle assign task to user
-  const handleAssignTask = useCallback(
-    async (assignUser: PBUser) => {
-      const assignerName = user?.name || user?.email?.split("@")[0] || "Unknown";
-      const description = commentText.trim() || "Task from comment";
-      try {
-        await createTask(
-          "", // commentId will be set after comment is created
-          assignUser.name || assignUser.email.split("@")[0],
-          assignerName,
-          description
-        );
-        setShowAssignDropdown(false);
-      } catch (err) {
-        console.error("Failed to assign task:", err);
-      }
-    },
-    [createTask, user, commentText, setShowAssignDropdown]
-  );
 
   // Sidebar resize logic
   useEffect(() => {
@@ -556,11 +532,8 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) =>
                   tasks={tasks}
                   onUpdateTaskStatus={updateTaskStatus}
                   // Assign dropdown
-                  showAssignDropdown={showAssignDropdown}
-                  assignFilteredUsers={assignFilteredUsers}
-                  selectedAssignIndex={selectedAssignIndex}
-                  onAssignTask={handleAssignTask}
-                  onCloseAssignDropdown={() => setShowAssignDropdown(false)}
+                  users={allUsers}
+                  onAssignTask={(comment: Comment, userId: string) => createTask(comment.id, userId, user?.name || user?.email || "Reviewer", comment.text)}
                 />
                 <div className="px-4 pb-4">
                   <AIReviewPanel videoRef={videoRef} />

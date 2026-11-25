@@ -370,23 +370,6 @@ export function useCommentEditor({
                 return [...prev, created as unknown as Comment];
             });
 
-            // Create notification for comment
-            try {
-                await pb.collection("notifications").create(
-                    {
-                        userId: "",
-                        type: "comment_added",
-                        message: `${commenterName} commented on "${revision.title || "a revision"}"`,
-                        revisionId: revision.id,
-                        sourceUser: commenterName,
-                        read: false,
-                    },
-                    { requestKey: null }
-                );
-            } catch (notifErr) {
-                console.warn("Could not create notification:", notifErr);
-            }
-
             // Create notifications for each mentioned user
             for (const mentionedUserId of pendingMentions) {
                 try {

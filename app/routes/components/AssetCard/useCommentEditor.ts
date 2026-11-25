@@ -1,3 +1,4 @@
+import { subscribeToRecords } from "../../utils/subscribeToRecords";
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { OnMount } from "@monaco-editor/react";
 import type { RecordModel } from "pocketbase";
@@ -454,54 +455,39 @@ export function useCommentEditor({
     useEffect(() => {
         if (!revision.id || !showModal) return;
 
-        let unsubscribe: (() => Promise<void>) | null = null;
+        return subscribeToRecords(pb, "comments", (data) => {
+            const record = data.record;
+            // Only process events for this revision
+            if (record.revisionId !== revision.id) return;
 
-        pb.collection("comments")
-            .subscribe("*", (data: any) => {
-                const record = data.record;
-                // Only process events for this revision
-                if (record.revisionId !== revision.id) return;
-
-                switch (data.action) {
-                    case "create":
-                        setComments((prev) => {
-                            // Deduplicate: skip if already in state (from local submit)
-                            if (prev.some((c) => c.id === record.id))
-                                return prev;
-                            return [
-                                ...prev,
-                                record as unknown as Comment,
-                            ];
-                        });
-                        break;
-                    case "update":
-                        setComments((prev) =>
-                            prev.map((c) =>
-                                c.id === record.id
-                                    ? (record as unknown as Comment)
-                                    : c
-                            )
-                        );
-                        break;
-                    case "delete":
-                        setComments((prev) =>
-                            prev.filter((c) => c.id !== record.id)
-                        );
-                        break;
-                }
-            })
-            .then((unsub: () => Promise<void>) => {
-                unsubscribe = unsub;
-            })
-            .catch((err: any) => {
-                console.error("Error subscribing to comments:", err);
-            });
-
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
+            switch (data.action) {
+                case "create":
+                    setComments((prev) => {
+                        // Deduplicate: skip if already in state (from local submit)
+                        if (prev.some((c) => c.id === record.id))
+                            return prev;
+                        return [
+                            ...prev,
+                            record as unknown as Comment,
+                        ];
+                    });
+                    break;
+                case "update":
+                    setComments((prev) =>
+                        prev.map((c) =>
+                            c.id === record.id
+                                ? (record as unknown as Comment)
+                                : c
+                        )
+                    );
+                    break;
+                case "delete":
+                    setComments((prev) =>
+                        prev.filter((c) => c.id !== record.id)
+                    );
+                    break;
             }
-        };
+        });
     }, [revision.id, showModal, pb]);
 
     // Reset command index when filtered commands change

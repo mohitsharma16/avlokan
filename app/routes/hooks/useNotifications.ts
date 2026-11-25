@@ -1,3 +1,4 @@
+import { subscribeToRecords } from "../utils/subscribeToRecords";
 import { useState, useEffect, useCallback } from "react";
 import type PocketBase from "pocketbase";
 import type { Notification } from "../types";
@@ -38,45 +39,30 @@ export function useNotifications({ pb, userId }: UseNotificationsProps) {
     useEffect(() => {
         if (!userId) return;
 
-        let unsubscribe: (() => Promise<void>) | null = null;
+        return subscribeToRecords(pb, "notifications", (data) => {
+            const record = data.record;
+            // Only process events for this user
+            if (record.userId !== userId) return;
 
-        pb.collection("notifications")
-            .subscribe("*", (data: any) => {
-                const record = data.record;
-                // Only process events for this user
-                if (record.userId !== userId) return;
-
-                switch (data.action) {
-                    case "create":
-                        setNotifications((prev) => {
-                            if (prev.some((n) => n.id === record.id)) return prev;
-                            return [record as unknown as Notification, ...prev];
-                        });
-                        break;
-                    case "update":
-                        setNotifications((prev) =>
-                            prev.map((n) =>
-                                n.id === record.id ? (record as unknown as Notification) : n
-                            )
-                        );
-                        break;
-                    case "delete":
-                        setNotifications((prev) => prev.filter((n) => n.id !== record.id));
-                        break;
-                }
-            })
-            .then((unsub: () => Promise<void>) => {
-                unsubscribe = unsub;
-            })
-            .catch((err: any) => {
-                console.error("Error subscribing to notifications:", err);
-            });
-
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
+            switch (data.action) {
+                case "create":
+                    setNotifications((prev) => {
+                        if (prev.some((n) => n.id === record.id)) return prev;
+                        return [record as unknown as Notification, ...prev];
+                    });
+                    break;
+                case "update":
+                    setNotifications((prev) =>
+                        prev.map((n) =>
+                            n.id === record.id ? (record as unknown as Notification) : n
+                        )
+                    );
+                    break;
+                case "delete":
+                    setNotifications((prev) => prev.filter((n) => n.id !== record.id));
+                    break;
             }
-        };
+        });
     }, [userId, pb]);
 
     // Mark a single notification as read

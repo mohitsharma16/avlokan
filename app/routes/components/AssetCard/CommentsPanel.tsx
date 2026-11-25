@@ -41,15 +41,12 @@ interface CommentsPanelProps {
     replyingTo?: Comment | null;
     onReply?: (comment: Comment) => void;
     onCancelReply?: () => void;
+    users: PBUser[];
+    onAssignTask: (comment: Comment, userId: string) => Promise<unknown>;
     // Task assignments
     tasks?: Task[];
     onUpdateTaskStatus?: (taskId: string, status: Task["status"]) => void;
-    // Assign dropdown
-    showAssignDropdown?: boolean;
-    assignFilteredUsers?: PBUser[];
-    selectedAssignIndex?: number;
-    onAssignTask?: (user: PBUser) => void;
-    onCloseAssignDropdown?: () => void;
+
 }
 
 // Helper: render comment text with @mentions highlighted
@@ -82,9 +79,11 @@ function renderCommentText(text: string): React.ReactNode {
 // Task status badge component
 function TaskBadge({
     task,
+    assigneeName,
     onUpdateStatus,
 }: {
     task: Task;
+    assigneeName: string;
     onUpdateStatus?: (taskId: string, status: Task["status"]) => void;
 }) {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -120,7 +119,7 @@ function TaskBadge({
             >
                 <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", flexShrink: 0 }} />
                 <span>{config.label}</span>
-                <span style={{ color: "var(--text-tertiary)", marginLeft: 2 }}>→ {task.assignedTo}</span>
+                <span style={{ color: "var(--text-tertiary)", marginLeft: 2 }}>→ {assigneeName}</span>
             </button>
             {showDropdown && onUpdateStatus && (
                 <div
@@ -180,9 +179,13 @@ function CommentItem({
     onSeekToTimestamp,
     onReply,
     tasks,
+    users,
+    onAssignTask,
     onUpdateTaskStatus,
 }: {
     comment: Comment;
+    users: PBUser[];
+    onAssignTask: CommentsPanelProps["onAssignTask"];
     isActive: boolean;
     activeCommentRef: React.RefObject<HTMLDivElement | null>;
     onSeekToTimestamp: (ts: string) => void;
@@ -190,6 +193,8 @@ function CommentItem({
     tasks?: Task[];
     onUpdateTaskStatus?: (taskId: string, status: Task["status"]) => void;
 }) {
+    const [assigning, setAssigning] = useState(false);
+    const [assignError, setAssignError] = useState("");
     const commentTasks = tasks?.filter((t) => t.commentId === comment.id) || [];
 
     return (
@@ -250,11 +255,33 @@ function CommentItem({
                         <TaskBadge
                             key={task.id}
                             task={task}
+                            assigneeName={users.find(user => user.id === task.assignedTo)?.name || task.assignedTo}
                             onUpdateStatus={onUpdateTaskStatus}
                         />
                     ))}
                 </div>
             )}
+
+            {users.length > 0 && (
+                <select aria-label="Assign this comment to a reviewer" value="" disabled={assigning}
+                    onChange={async event => {
+                        const userId = event.currentTarget.value;
+                        if (!userId) return;
+                        setAssignError("");
+                        setAssigning(true);
+                        try {
+                            await onAssignTask(comment, userId);
+                        } catch {
+                            setAssignError("Could not assign this task. Please try again.");
+                        } finally {
+                            setAssigning(false);
+                        }
+                    }}>
+                    <option value="" disabled>{assigning ? "Assigning..." : "Assign task"}</option>
+                    {users.map(user => <option key={user.id} value={user.id}>{user.name || user.email || "Reviewer"}</option>)}
+                </select>
+            )}
+            {assignError && <p role="alert">{assignError}</p>}
 
             {/* Reply button */}
             {onReply && (
@@ -304,12 +331,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     // Tasks
     tasks,
     onUpdateTaskStatus,
-    // Assign dropdown
-    showAssignDropdown,
-    assignFilteredUsers,
-    selectedAssignIndex,
+    users,
     onAssignTask,
-    onCloseAssignDropdown,
 }) => {
     const { isDark } = useTheme();
     const activeCommentRef = useRef<HTMLDivElement>(null);
@@ -422,6 +445,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                         activeCommentRef={activeCommentRef}
                                         onSeekToTimestamp={onSeekToTimestamp}
                                         onReply={onReply}
+                                        users={users}
+                                        onAssignTask={onAssignTask}
                                         tasks={tasks}
                                         onUpdateTaskStatus={onUpdateTaskStatus}
                                     />
@@ -474,6 +499,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                                                                 onSeekToTimestamp
                                                             }
                                                             onReply={onReply}
+                                                            users={users}
+                                                            onAssignTask={onAssignTask}
                                                             tasks={tasks}
                                                             onUpdateTaskStatus={
                                                                 onUpdateTaskStatus
@@ -557,65 +584,6 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
                     </div>
                 </div>
             )}
-
-            {/* Assign Task Dropdown */}
-            {showAssignDropdown &&
-                assignFilteredUsers &&
-                assignFilteredUsers.length > 0 && (
-                    <div className="mb-3 overflow-hidden" style={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border-strong)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-hover)", backdropFilter: "blur(8px)" }}>
-                        <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: "1px solid var(--color-border-strong)" }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                Assign task to
-                            </div>
-                            {onCloseAssignDropdown && (
-                                <button
-                                    onClick={onCloseAssignDropdown}
-                                    style={{ color: "var(--color-text-tertiary)", fontSize: 12, background: "none", border: "none", cursor: "pointer" }}
-                                >
-                                    ✕
-                                </button>
-                            )}
-                        </div>
-                        <div className="p-1 max-h-48 overflow-y-auto">
-                            {assignFilteredUsers.map((user, index) => {
-                                const displayName =
-                                    user.name || user.email.split("@")[0];
-                                const isSel = index === (selectedAssignIndex || 0);
-                                return (
-                                    <div
-                                        key={user.id}
-                                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150"
-                                        style={{
-                                            background: isSel ? "var(--accent)" : "transparent",
-                                            boxShadow: isSel ? "0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent)" : "none",
-                                        }}
-                                        onClick={() =>
-                                            onAssignTask && onAssignTask(user)
-                                        }
-                                    >
-                                        <div
-                                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold uppercase flex-shrink-0"
-                                            style={{
-                                                background: isSel ? "color-mix(in srgb, var(--color-accent-ink) 22%, transparent)" : "var(--color-bg-tertiary)",
-                                                color: isSel ? "var(--color-accent-ink)" : "var(--color-text-primary)",
-                                            }}
-                                        >
-                                            {displayName.charAt(0)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div style={{ fontWeight: 500, fontSize: 13, color: isSel ? "var(--color-accent-ink)" : "var(--color-text-primary)" }} className="truncate">
-                                                {displayName}
-                                            </div>
-                                            <div style={{ fontSize: 11, color: isSel ? "color-mix(in srgb, var(--color-accent-ink) 70%, transparent)" : "var(--color-text-tertiary)" }} className="truncate">
-                                                {user.email}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
 
             <div className="space-y-2 relative">
                 <div className="pt-4" style={{ borderTop: "1px solid var(--border)" }}>

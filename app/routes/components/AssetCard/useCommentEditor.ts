@@ -329,7 +329,7 @@ export function useCommentEditor({
     };
 
     const handleSubmit = async () => {
-        const commenterName = user?.name || user?.email.split("@");
+        const commenterName = user?.name?.trim() || user?.email?.trim().split("@")[0];
 
         if (!commenterName || !commentText.trim()) {
             alert(
@@ -343,7 +343,7 @@ export function useCommentEditor({
                 timestampPills.length > 0 ? timestampPills[0].timestamp : "";
 
             const newComment: any = {
-                name: commenterName[0],
+                name: commenterName,
                 timestamp: capturedTimestamp,
                 text: commentText,
                 revisionId: revision.id,
@@ -375,9 +375,9 @@ export function useCommentEditor({
                     {
                         userId: "",
                         type: "comment_added",
-                        message: `${commenterName[0]} commented on "${revision.title || "a revision"}"`,
+                        message: `${commenterName} commented on "${revision.title || "a revision"}"`,
                         revisionId: revision.id,
-                        sourceUser: commenterName[0],
+                        sourceUser: commenterName,
                         read: false,
                     },
                     { requestKey: null }
@@ -393,9 +393,9 @@ export function useCommentEditor({
                         {
                             userId: mentionedUserId,
                             type: "mention",
-                            message: `${commenterName[0]} mentioned you in a comment on "${revision.title || "a revision"}"`,
+                            message: `${commenterName} mentioned you in a comment on "${revision.title || "a revision"}"`,
                             revisionId: revision.id,
-                            sourceUser: commenterName[0],
+                            sourceUser: commenterName,
                             read: false,
                         },
                         { requestKey: null }

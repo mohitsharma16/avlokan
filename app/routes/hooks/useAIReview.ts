@@ -1,3 +1,4 @@
+import { captureVideoFrame } from "../utils/frameCapture";
 import { useCallback, useState } from "react";
 import { requestAIReview, type AIReviewResult } from "../services/aiReviewService";
 
@@ -11,8 +12,7 @@ export interface AIReviewState {
 
 export interface UseAIReview {
   state: AIReviewState;
-  analyzeFrame: (base64: string) => Promise<void>;
-  clearResult: () => void;
+  analyzeFrame: (video: HTMLVideoElement | null) => Promise<void>;
 }
 
 export function useAIReview(): UseAIReview {
@@ -22,10 +22,11 @@ export function useAIReview(): UseAIReview {
     error: null,
   });
 
-  const analyzeFrame = useCallback(async (base64: string): Promise<void> => {
+  const analyzeFrame = useCallback(async (video: HTMLVideoElement | null): Promise<void> => {
     setState((prev) => ({ ...prev, status: "analyzing", result: null, error: null }));
     try {
-      const result = await requestAIReview(base64);
+      if (!video) throw new Error("Wait for the video to load and try again.");
+      const result = await requestAIReview(captureVideoFrame(video));
       setState({ status: "idle", result, error: null });
     } catch (err) {
       const message = err instanceof Error ? err.message : "AI analysis failed.";
@@ -33,9 +34,5 @@ export function useAIReview(): UseAIReview {
     }
   }, []);
 
-  const clearResult = useCallback(() => {
-    setState((prev) => ({ ...prev, result: null, error: null }));
-  }, []);
-
-  return { state, analyzeFrame, clearResult };
+  return { state, analyzeFrame };
 }

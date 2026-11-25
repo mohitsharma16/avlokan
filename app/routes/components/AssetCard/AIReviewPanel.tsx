@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { captureVideoFrame } from "../../utils/frameCapture";
 import { useAIReview } from "../../hooks/useAIReview";
 import type { AIFinding } from "../../services/aiReviewService";
 import { EASE } from "../motion/motionVariants";
@@ -31,7 +30,7 @@ const chevron = (open: boolean) => (
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
-    const { state, analyzeFrame, clearResult } = useAIReview();
+    const { state, analyzeFrame } = useAIReview();
     const { status, result, error } = state;
 
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
@@ -39,11 +38,9 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
     );
 
     const handleAnalyze = useCallback(async (): Promise<void> => {
-        if (!videoRef.current || status === "analyzing") return;
-        clearResult();
-        const frameBase64 = captureVideoFrame(videoRef.current);
-        await analyzeFrame(frameBase64);
-    }, [videoRef, status, analyzeFrame, clearResult]);
+        if (status === "analyzing") return;
+        await analyzeFrame(videoRef.current);
+    }, [videoRef, status, analyzeFrame]);
 
     const toggleCategory = (cat: string) => {
         setExpandedCategories((prev) => {
@@ -70,7 +67,7 @@ const AIReviewPanel: React.FC<AIReviewPanelProps> = ({ videoRef }) => {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <h3 className="av-eyebrow" style={{ margin: 0, fontSize: 11, color: "var(--color-accent-text)" }}>AI review</h3>
                 <button onClick={handleAnalyze} disabled={isAnalyzing} className="av-btn av-btn-secondary av-btn-sm" aria-busy={isAnalyzing}>
-                    {isAnalyzing ? (<><span className="av-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />Reviewing frame…</>) : "Review this frame"}
+                    {isAnalyzing ? (<><span className="av-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />Reviewing frame…</>) : status === "error" ? "Retry review" : "Review this frame"}
                 </button>
             </div>
 

@@ -22,26 +22,45 @@ const VALID_CATEGORIES = new Set([
 ]);
 const VALID_SEVERITIES = new Set(["info", "warning", "error"]);
 
-function normalizeFindings(raw: unknown): AIFinding[] {
-    if (!Array.isArray(raw)) return [];
-    return raw
-        .filter(
-            (f): f is Record<string, unknown> =>
-                !!f &&
-                typeof f === "object" &&
-                typeof (f as Record<string, unknown>).title === "string" &&
-                VALID_CATEGORIES.has((f as Record<string, unknown>).category as string) &&
-                VALID_SEVERITIES.has((f as Record<string, unknown>).severity as string)
-        )
-        .map((f, idx) => ({
-            id: typeof f.id === "string" ? f.id : `finding-${idx}`,
-            category: f.category as AIFinding["category"],
-            severity: f.severity as AIFinding["severity"],
-            title: f.title as string,
-            description: typeof f.description === "string" ? f.description : "",
-            suggestion: typeof f.suggestion === "string" ? f.suggestion : "",
-            bounds: f.bounds as AIFinding["bounds"],
-        }));
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasText(value: unknown): value is string {
+    return typeof value === "string" && value.trim().length > 0;
+}
+
+function validBounds(value: unknown): value is NonNullable<AIFinding["bounds"]> {
+    return isRecord(value) && ["x", "y", "width", "height"].every(key => {
+        const n = value[key];
+        return typeof n === "number" && n >= 0 && n <= 1;
+    });
+}
+
+export function parseReviewResult(raw: unknown): AIReviewResult {
+    const invalid = "AI returned an incomplete or invalid review. Please try again.";
+    if (!isRecord(raw) || !hasText(raw.summary) || !Array.isArray(raw.findings)) {
+        throw new Error(invalid);
+    }
+
+    const findings = raw.findings.map((finding: unknown, index): AIFinding => {
+        if (!isRecord(finding) || !VALID_CATEGORIES.has(finding.category as string) ||
+            !VALID_SEVERITIES.has(finding.severity as string) || !hasText(finding.title) ||
+            !hasText(finding.description) || !hasText(finding.suggestion) ||
+            (finding.bounds !== undefined && !validBounds(finding.bounds))) {
+            throw new Error(invalid);
+        }
+        return {
+            id: `finding-${index}`,
+            category: finding.category as AIFinding["category"],
+            severity: finding.severity as AIFinding["severity"],
+            title: finding.title,
+            description: finding.description,
+            suggestion: finding.suggestion,
+            bounds: finding.bounds,
+        };
+    });
+    return { summary: raw.summary, findings };
 }
 
 /**
@@ -61,12 +80,5 @@ export async function requestAIReview(imageBase64: string): Promise<AIReviewResu
         throw new Error(data?.error || "AI analysis failed. Please try again.");
     }
 
-    const findings = normalizeFindings(data.findings);
-    return {
-        summary:
-            typeof data.summary === "string" && data.summary
-                ? data.summary
-                : `Found ${findings.length} potential issue${findings.length !== 1 ? "s" : ""}.`,
-        findings,
-    };
+    return parseReviewResult(data);
 }

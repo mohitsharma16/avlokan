@@ -597,9 +597,11 @@ export function useAnnotations({
             loadAnnotationForTime(video.currentTime);
         };
 
+        // Fetched drawings can arrive while playback is paused on the first frame.
+        if (video.currentTime === 0 && annotations.length && !isAnnotating) handleTimeUpdate();
         video.addEventListener('timeupdate', handleTimeUpdate);
         return () => video.removeEventListener('timeupdate', handleTimeUpdate);
-    }, [showModal, loadAnnotationForTime]);
+    }, [showModal, loadAnnotationForTime, annotations, isAnnotating]);
 
     // Fetch annotations from PocketBase when modal opens
     const fetchAnnotations = useCallback(async () => {

@@ -479,3 +479,22 @@ textarea.av-input { resize: vertical; line-height: 1.5; }
   }
   .av-btn:hover, .av-surface-interactive:hover { transform: none; }
 }
+
+/* The chapter text stays in document flow at every scroll speed. */
+.av-review-story { max-width: 1500px; margin: 0 auto; padding: 56px clamp(16px, 4vw, 64px); scroll-margin-top: 72px; }
+.av-review-links { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; }
+.av-review-chapter { display: grid; align-content: center; gap: 24px; padding-block: 36px; scroll-margin-top: 72px; }
+.av-review-chapter .av-eyebrow { color: var(--color-accent-text); margin: 0 0 12px; }
+.av-review-chapter .av-h2 { margin: 0; font-size: clamp(36px, 4vw, 58px); }
+.av-review-chapter .av-lede { margin: 16px 0 0; max-width: 46ch; }
+.av-review-inline, .av-review-stage { min-width: 0; border-radius: var(--av-radius-lg); }
+.av-review-stage { display: none; }
+@media (min-width: 1024px) and (min-height: 600px) and (prefers-reduced-motion: no-preference) {
+  .av-review-layout { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.6fr); gap: clamp(32px, 4vw, 64px); }
+  .av-review-chapter { min-height: 72vh; }
+  .av-review-inline { display: none; }
+  .av-review-stage { display: grid; align-content: center; position: sticky; top: 72px; align-self: start; height: calc(100vh - 72px); }
+}
+
+/* A chapter link should land immediately, even during an earlier smooth scroll. */
+html:has(.av-review-chapter:target) { scroll-behavior: auto; }

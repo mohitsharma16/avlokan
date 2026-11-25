@@ -56,6 +56,22 @@ the authoritative parent. To roll back this release, pause uploads and run
 `pocketbase migrate down 1` while this migration is the most recent. Rollback rebuilds
 the legacy asset lists in version order, including uploads since migration.
 
+### PocketBase revision upload hook
+
+After the revision migration, install `pb_hooks/revision_versions.pb.js` in the
+PocketBase instance's `pb_hooks/` directory and restart PocketBase before
+deploying the frontend. The hook assigns the next version inside the database
+transaction that creates the revision. Older clients may still send a version
+number during rollout. PocketBase assigns the stored value.
+
+If an upload is interrupted, retry it in the same browser tab with the same
+file, title and notes. The workspace checks whether that upload already reached
+PocketBase before sending the file again.
+
+To verify concurrent uploads and retry recovery, set `POCKETBASE_BIN` to the
+PocketBase executable and run `node --test tests/revision-uploads.test.mjs`.
+The test starts a disposable database on a local port.
+
 ## Building for Production
 
 Create a production build:

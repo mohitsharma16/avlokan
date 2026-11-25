@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { uploadRevision } from "../../services/uploadRevision";
 import { Modal } from "../design";
 
 interface RevisionFormProps {
@@ -40,21 +41,7 @@ const RevisionForm: React.FC<RevisionFormProps> = ({ assetId, onClose, onSuccess
     setLoading(true);
     setError(null);
     try {
-      const latest = await pb.collection("assets_revision").getList<{ versionNumber: number }>(1, 1, {
-        filter: pb.filter("asset = {:asset}", { asset: assetId }),
-        sort: "-versionNumber",
-        fields: "versionNumber",
-      });
-      const nextVersion = (latest.items[0]?.versionNumber ?? 0) + 1;
-
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("video", video);
-      formData.append("asset", assetId);
-      formData.append("versionNumber", nextVersion.toString());
-
-      await pb.collection("assets_revision").create(formData);
+      await uploadRevision(pb, assetId, title, description, video);
 
       onSuccess();
       onClose();

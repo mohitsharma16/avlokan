@@ -17,12 +17,35 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, maxWidth = 5
   useModalHistory(open, onClose, useId());
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    panel.current?.focus();
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    const dialog = panel.current;
+    if (!open || !dialog) return;
+
+    const opener = document.activeElement;
+    dialog.focus();
+
+    const cycleFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
+        "a[href], button, input, select, textarea, [tabindex], [contenteditable=true]",
+      )).filter((element) =>
+        element.tabIndex >= 0 && !element.matches(":disabled") &&
+        element.getClientRects().length > 0 && getComputedStyle(element).visibility === "visible"
+      );
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      const active = document.activeElement;
+      if (!first || !dialog.contains(active) || active === dialog ||
+          active === (event.shiftKey ? first : last)) {
+        event.preventDefault();
+        ((event.shiftKey ? last : first) ?? dialog).focus();
+      }
+    };
+    document.addEventListener("keydown", cycleFocus);
+    return () => {
+      document.removeEventListener("keydown", cycleFocus);
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, [open]);
 
   return (
     <AnimatePresence>
@@ -33,6 +56,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, maxWidth = 5
           style={{ position: "fixed", inset: 0, zIndex: "var(--av-z-modal)" as any, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(5,5,7,0.62)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
         >
           <motion.div
+            onKeyDown={(event) => { if (event.key === "Escape") onClose(); }}
             ref={panel} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
             initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.32, ease: EASE }}

@@ -115,7 +115,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ revision, context = [] }: any) =>
   // Task assignments hook
   const { tasks, createTask, updateTaskStatus } = useTaskAssignments({
     pb,
-    revisionId: revision.id,
+    revisionId: showModal ? revision.id : "",
   });
 
   // Zoom hook

@@ -1,3 +1,4 @@
+import { subscribeToRecords } from "../../utils/subscribeToRecords";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Canvas, FabricObject, Circle, Rect, Textbox, PencilBrush, Line, Triangle, Group } from "fabric";
 import type { Annotation } from "../../types";
@@ -635,43 +636,28 @@ export function useAnnotations({
     useEffect(() => {
         if (!revision.id || !showModal) return;
 
-        let unsubscribe: (() => Promise<void>) | null = null;
+        return subscribeToRecords(pb, "annotations", (data) => {
+            const record = data.record;
+            // Only process events for this revision
+            if (record.revisionId !== revision.id) return;
 
-        pb.collection("annotations")
-            .subscribe("*", (data: any) => {
-                const record = data.record;
-                // Only process events for this revision
-                if (record.revisionId !== revision.id) return;
-
-                switch (data.action) {
-                    case "create":
-                        setAnnotations((prev: any[]) => {
-                            if (prev.some((a: any) => a.id === record.id)) return prev;
-                            return [...prev, record];
-                        });
-                        break;
-                    case "update":
-                        setAnnotations((prev: any[]) =>
-                            prev.map((a: any) => (a.id === record.id ? record : a))
-                        );
-                        break;
-                    case "delete":
-                        setAnnotations((prev: any[]) => prev.filter((a: any) => a.id !== record.id));
-                        break;
-                }
-            })
-            .then((unsub: () => Promise<void>) => {
-                unsubscribe = unsub;
-            })
-            .catch((err: any) => {
-                console.error("Error subscribing to annotations:", err);
-            });
-
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
+            switch (data.action) {
+                case "create":
+                    setAnnotations((prev: any[]) => {
+                        if (prev.some((a: any) => a.id === record.id)) return prev;
+                        return [...prev, record];
+                    });
+                    break;
+                case "update":
+                    setAnnotations((prev: any[]) =>
+                        prev.map((a: any) => (a.id === record.id ? record : a))
+                    );
+                    break;
+                case "delete":
+                    setAnnotations((prev: any[]) => prev.filter((a: any) => a.id !== record.id));
+                    break;
             }
-        };
+        });
     }, [revision.id, showModal, pb]);
 
     // Toggle annotation mode

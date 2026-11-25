@@ -1,3 +1,4 @@
+import { subscribeToRecords } from "../utils/subscribeToRecords";
 import { useState, useEffect, useCallback } from "react";
 import type PocketBase from "pocketbase";
 import type { Task } from "../types";
@@ -35,44 +36,29 @@ export function useTaskAssignments({ pb, revisionId }: UseTaskAssignmentsProps) 
     useEffect(() => {
         if (!revisionId) return;
 
-        let unsubscribe: (() => Promise<void>) | null = null;
+        return subscribeToRecords(pb, "tasks", (data) => {
+            const record = data.record;
+            if (record.revisionId !== revisionId) return;
 
-        pb.collection("tasks")
-            .subscribe("*", (data: any) => {
-                const record = data.record;
-                if (record.revisionId !== revisionId) return;
-
-                switch (data.action) {
-                    case "create":
-                        setTasks((prev) => {
-                            if (prev.some((t) => t.id === record.id)) return prev;
-                            return [record as unknown as Task, ...prev];
-                        });
-                        break;
-                    case "update":
-                        setTasks((prev) =>
-                            prev.map((t) =>
-                                t.id === record.id ? (record as unknown as Task) : t
-                            )
-                        );
-                        break;
-                    case "delete":
-                        setTasks((prev) => prev.filter((t) => t.id !== record.id));
-                        break;
-                }
-            })
-            .then((unsub: () => Promise<void>) => {
-                unsubscribe = unsub;
-            })
-            .catch((err: any) => {
-                console.error("Error subscribing to tasks:", err);
-            });
-
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
+            switch (data.action) {
+                case "create":
+                    setTasks((prev) => {
+                        if (prev.some((t) => t.id === record.id)) return prev;
+                        return [record as unknown as Task, ...prev];
+                    });
+                    break;
+                case "update":
+                    setTasks((prev) =>
+                        prev.map((t) =>
+                            t.id === record.id ? (record as unknown as Task) : t
+                        )
+                    );
+                    break;
+                case "delete":
+                    setTasks((prev) => prev.filter((t) => t.id !== record.id));
+                    break;
             }
-        };
+        });
     }, [revisionId, pb]);
 
     const createTask = useCallback(
